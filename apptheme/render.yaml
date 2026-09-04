@@ -1,19 +1,20 @@
-# دیپلوی رایگان روی render.com — فقط این فایل + گیت‌هاب کافیه
+# اپ‌تم — Render Blueprint
+# Repository layout: /render.yaml + /apptheme/*
 services:
   - type: web
     name: apptheme
-    runtime: node
+    runtime: docker
     plan: free
-    buildCommand: echo "بدون نیاز به بیلد — صفر وابستگی"
-    startCommand: node server.js
+    rootDir: ./apptheme
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     envVars:
-      - key: SITE_URL        # بعد از ساخت، آدرس واقعی را بگذارید: https://apptheme.onrender.com
+      - key: SITE_URL
         sync: false
       - key: NODE_VERSION
         value: "20"
-      # ── ماندگاری داده‌ها روی پلن رایگان (دیسک موقت!) — اختیاری ولی به‌شدت توصیه‌شده ──
-      - key: DB_SYNC_REPO      # مثل: myuser/apptheme-data (ریپوی خصوصی برای دیتابیس)
+      # برای نگهداری DB روی دیسک موقت Render رایگان (اختیاری)
+      - key: DB_SYNC_REPO
         sync: false
-      - key: DB_SYNC_TOKEN     # توکن گیت‌هاب با دسترسی Contents: Read and Write
+      - key: DB_SYNC_TOKEN
         sync: false

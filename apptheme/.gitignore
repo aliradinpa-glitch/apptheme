@@ -1,0 +1,11 @@
+# Runtime data
+data/
+*.log
+*.tmp
+*.corrupted-*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

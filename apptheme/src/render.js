@@ -5,10 +5,13 @@ import { findMany, getDb } from './db.js';
 
 const BASE_CSS = '<link rel="stylesheet" href="/assets/css/app.css">';
 
+// جلوگیری از شکستن تگ script توسط داده‌های JSON-LD
+const jsonLdSafe = value => JSON.stringify(value).replace(/</g, '\u003c').replace(/>/g, '\u003e').replace(/&/g, '\u0026');
+
 function baseHtml({ title, desc, url = '', body, extraHead = '', adminMode = false, noindex = false, jsonld = [], csrf = '' }) {
   const robots = noindex ? '<meta name="robots" content="noindex,nofollow">' : '<meta name="robots" content="index,follow,max-image-preview:large">';
   const jsonldTags = jsonld.length
-    ? jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j)}</script>`).join('')
+    ? jsonld.map(j => `<script type="application/ld+json">${jsonLdSafe(j)}</script>`).join('')
     : '';
   const csrfMeta = csrf ? `<meta name="csrf" content="${esc(csrf)}">` : '';
   const pwaMeta = adminMode ? '' : `<link rel="manifest" href="/manifest.json">

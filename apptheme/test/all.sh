@@ -1,6 +1,7 @@
 #!/bin/bash
 # ═══ تست جامع اپ‌تم — فاز ۲/۳/۵ ═══
-cd /home/user/themeland
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 export PORT=3100
 rm -f data/db.json
 for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do

@@ -5,6 +5,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { PORT, HOST, BODY_LIMIT, SITE_URL } from './src/config.js';
 import { loadDb, getDb, findOne, persist, dbSyncInit } from './src/db.js';
@@ -85,7 +86,9 @@ const MIME = {
   '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8', '.zip': 'application/zip',
 };
-const ASSETS_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), 'src', 'assets');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ASSETS_DIR = path.join(__dirname, 'src', 'assets');
 function serveAsset(req, res, pathname) {
   const rel = pathname.replace(/^\/assets\//, '');
   const file = path.normalize(path.join(ASSETS_DIR, rel));
@@ -105,6 +108,8 @@ const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><de
 // ═══ سرور ═══
 const server = http.createServer(async (req, res) => {
   const started = Date.now();
+  const requestId = Math.random().toString(36).slice(2, 8);
+  res.setHeader('X-Request-ID', requestId);
   let pathname = '/', query = {};
   try {
     const u = new URL(req.url, 'http://internal');
@@ -124,8 +129,9 @@ const server = http.createServer(async (req, res) => {
   if (user && user.role === 'admin') user.__csrf = csrf; // برای فرم‌های ادمین
 
   const finish = (code, html) => {
+    if (!res.headersSent) res.setHeader('X-Request-ID', requestId);
     send(req, res, code, html);
-    console.log(`${req.method} ${pathname} → ${code} (${Date.now() - started}ms)`);
+    console.log(`${requestId} ${req.method} ${pathname} → ${code} (${Date.now() - started}ms)`);
   };
   const handle = result => {
     if (!result) return finish(404, notFoundPage());

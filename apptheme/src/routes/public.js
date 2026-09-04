@@ -14,7 +14,7 @@ export function home(req, res, { user, baseUrl, csrf }) {
   const products = findMany('products', p => p.published).sort((a, b) => b.downloads - a.downloads);
   const featured = products.slice(0, 6);
   const totalDownloads = products.reduce((s, p) => s + p.downloads, 0);
-  const customers = findMany('users', u => u.role === 'customer').length + 1240; // پایه + دمو
+  const categoryCount = db.categories.length;
   const approved = findMany('comments', c => c.status === 'approved').slice(0, 3);
 
   const jsonld = [
@@ -36,7 +36,7 @@ export function home(req, res, { user, baseUrl, csrf }) {
       <div class="hero-stats">
         <div><div class="num">${fa(products.length)}</div><div class="lbl">قالب حرفه‌ای</div></div>
         <div><div class="num">${fa(totalDownloads)}</div><div class="lbl">دانلود موفق</div></div>
-        <div><div class="num">${fa(customers)}</div><div class="lbl">مشتری فعال</div></div>
+        <div><div class="num">${fa(categoryCount)}</div><div class="lbl">دسته‌بندی تخصصی</div></div>
       </div>
     </div>
     <div class="hero-art">
@@ -69,7 +69,7 @@ export function home(req, res, { user, baseUrl, csrf }) {
   <div class="container">
     <div class="section-head"><h2>چرا اپ‌تم؟</h2></div>
     <div class="why-grid">
-      <div class="card why-card"><div class="ic">⚡</div><h3>سرعت و سئو</h3><p>همه قالب‌ها با نمره ۹۰+ PageSpeed و ساختار سئوی استاندارد تحویل می‌شوند.</p></div>
+      <div class="card why-card"><div class="ic">⚡</div><h3>سرعت و سئو</h3><p>ساختار سبک، HTML معنایی، داده‌های ساختاریافته و خروجی SSR برای شروع سریع‌تر و سئوی بهتر.</p></div>
       <div class="card why-card"><div class="ic">⬇️</div><h3>دانلود آنی</h3><p>بلافاصله پس از پرداخت، لینک دانلود اختصاصی در پنل کاربری فعال می‌شود.</p></div>
       <div class="card why-card"><div class="ic">🔄</div><h3>آپدیت رایگان</h3><p>خرید یک‌بارمِمیز؛ همه به‌روزرسانی‌های بعدی قالب برای شما رایگان است.</p></div>
       <div class="card why-card"><div class="ic">💬</div><h3>پشتیبانی واقعی</h3><p>تیم پشتیبانی ما تا راه‌اندازی کامل قالب همراه شماست.</p></div>

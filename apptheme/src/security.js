@@ -81,7 +81,9 @@ export function securityHeaders(res, isHttps) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-XSS-Protection', '0');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   if (isHttps) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   // CSP: بدون اسکریپت inline؛ استایل اینلاین مجاز (برای صفحات پیش‌نمایش و ریزاستایل‌ها)

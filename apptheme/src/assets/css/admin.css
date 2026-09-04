@@ -135,3 +135,23 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
 .pal-dots { display: inline-flex; gap: 5px; margin-inline-start: 10px; vertical-align: middle; }
 .pal-dots i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 2px solid var(--surface); }
 .gen-preview-panel { position: sticky; top: 80px; }
+
+
+/* ═══ اپ‌تم Pro Admin UI v1.7 ═══ */
+body.admin-body {
+  background: radial-gradient(circle at 100% 0, color-mix(in srgb, var(--primary) 5%, transparent), transparent 26rem), var(--bg);
+}
+.admin-sidebar { box-shadow: 10px 0 30px rgba(20,25,50,.035); }
+.admin-topbar { box-shadow: 0 8px 28px rgba(20,25,50,.04); }
+.admin-content { max-width: 1500px; }
+.stats-grid .card, .stat-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.stats-grid .card:hover, .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--primary) 22%, var(--border)); }
+.tbl tbody tr:hover td { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+.admin-nav a { border: 1px solid transparent; }
+.admin-nav a:hover { border-color: var(--border); }
+.panel { box-shadow: var(--shadow); }
+.input:focus, .select:focus, .textarea:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent); }
+@media (max-width: 900px) {
+  .admin-sidebar { box-shadow: none; }
+  .admin-topbar { padding: 13px 15px; }
+}
