@@ -1,5 +1,5 @@
 // ═══ پنل مدیریت — همه بخش‌ها ═══
-import { esc, money, faNum, faDate, faDateTime, slugify } from '../util.js';
+import { esc, money, faNum, faDate, faDateTime, slugify, parseMoney } from '../util.js';
 import { adminPage } from '../render.js';
 import { findMany, findOne, insert, updateOne, removeOne, getDb, persist, replaceDb } from '../db.js';
 import { login } from '../auth.js';
@@ -117,8 +117,25 @@ ${(() => {
 }
 
 // ═══ قالب‌ها ═══
-export function productsList(req, res, { user }) {
+
+// ─── صفحه‌بندی مشترک لیست‌های ادمین ───
+function paginate(arr, query, per = 15) {
+  const pages = Math.max(1, Math.ceil(arr.length / per));
+  const cur = Math.min(Math.max(1, parseInt(query?.page) || 1), pages);
+  return { slice: arr.slice((cur - 1) * per, cur * per), cur, pages };
+}
+function pagerHtml(cur, pages, basePath) {
+  if (pages <= 1) return '';
+  let h = '<div class="pager" style="margin-top:16px">';
+  if (cur > 1) h += `<a class="btn ghost sm" href="${basePath}?page=${cur - 1}">قبلی →</a>`;
+  for (let i = 1; i <= pages; i++) h += `<a class="btn ${i === cur ? '' : 'ghost'} sm" href="${basePath}?page=${i}">${faNum(i)}</a>`;
+  if (cur < pages) h += `<a class="btn ghost sm" href="${basePath}?page=${cur + 1}">← بعدی</a>`;
+  return h + '</div>';
+}
+
+export function productsList(req, res, { user, query }) {
   const products = [...getDb().products].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const { slice, cur, pages } = paginate(products, query);
   const body = `
 <div class="between" style="margin-bottom:18px">
   <span class="muted small">${fa(products.length)} قالب</span>
@@ -126,7 +143,7 @@ export function productsList(req, res, { user }) {
 </div>
 <div class="table-wrap"><table class="tbl">
   <tr><th>قالب</th><th>قیمت</th><th>فریمورک</th><th>دانلود</th><th>وضعیت</th><th>عملیات</th></tr>
-  ${products.map(p => `<tr>
+  ${slice.map(p => `<tr>
     <td><b>${esc(p.title)}</b><div class="muted small">/${esc(p.slug)}</div></td>
     <td>${money(p.salePrice || p.price)}${p.salePrice ? `<div class="muted small"><del>${money(p.price)}</del></div>` : ''}</td>
     <td>${(p.frameworks || []).map(f => `<span class="badge">${FRAMEWORKS[f]?.short || f}</span>`).join(' ')}</td>
@@ -135,10 +152,10 @@ export function productsList(req, res, { user }) {
     <td class="ops">
       <a class="btn sm ghost" href="/templates/${esc(p.slug)}" target="_blank">👁</a>
       <a class="btn sm ghost" href="/admin/products/${p.id}/edit">✏️</a>
-      <form method="post" action="/admin/products/${p.id}/delete" onsubmit="return confirm('قالب حذف شود؟')"><input type="hidden" name="_csrf" value="${user.__csrf}"><button class="btn sm danger" type="submit">🗑</button></form>
+      <form method="post" action="/admin/products/${p.id}/delete" data-confirm="قالب «${esc(p.title)}» برای همیشه حذف شود؟" data-ok-text="بله، حذف کن"><input type="hidden" name="_csrf" value="${user.__csrf}"><button class="btn sm danger" type="submit">🗑</button></form>
     </td>
   </tr>`).join('')}
-</table></div>`;
+</table></div>${pagerHtml(cur, pages, '/admin/products')}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت قالب‌ها', active: 'products', body });
 }
 
@@ -153,8 +170,8 @@ ${error ? `<div class="alert err">${esc(error)}</div>` : ''}
   <div class="form-grid">
     <div class="field"><label class="req">عنوان قالب</label><input class="input" name="title" required value="${esc(p.title)}"></div>
     <div class="field"><label>اسلاگ (خودکار)</label><input class="input" name="slug" value="${esc(p.slug)}" placeholder="خودکار از روی عنوان" dir="ltr"></div>
-    <div class="field"><label class="req">قیمت (تومان)</label><input class="input" name="price" type="number" min="0" required value="${p.price ?? ''}"></div>
-    <div class="field"><label>قیمت با تخفیف (اختیاری)</label><input class="input" name="salePrice" type="number" min="0" value="${p.salePrice ?? ''}"></div>
+    <div class="field"><label class="req">قیمت (تومان)</label><input class="input" name="price" required value="${p.price ?? ''}" placeholder="مثلاً 850000"></div>
+    <div class="field"><label>قیمت با تخفیف (اختیاری)</label><input class="input" name="salePrice" value="${p.salePrice ?? ''}" placeholder="مثلاً 590000"></div>
     <div class="field"><label>تعداد صفحات</label><input class="input" name="pages" type="number" min="1" value="${p.pages}"></div>
     <div class="field"><label>رنگ‌ها (c1 / c2 / تاکید)</label>
       <div class="flex">
@@ -196,8 +213,8 @@ export function handleProductSave(req, res, ctx, id = null) {
     slug: slugify(body.slug || title),
     description: cleanText(body.description, 300),
     longDescription: cleanText(body.longDescription, 3000),
-    price: Math.max(0, Number(body.price) || 0),
-    salePrice: body.salePrice ? Math.max(0, Number(body.salePrice)) : null,
+    price: Math.max(0, parseMoney(body.price) || 0),
+    salePrice: body.salePrice ? (Number.isFinite(parseMoney(body.salePrice)) ? Math.max(0, parseMoney(body.salePrice)) : null) : null,
     pages: Math.max(1, Number(body.pages) || 1),
     features: String(body.features || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 12),
     tags: String(body.tags || '').split(/[،,]/).map(x => x.trim()).filter(Boolean).slice(0, 10),
@@ -221,12 +238,13 @@ export function handleProductDelete(req, res, ctx, id) {
 }
 
 // ═══ سفارش‌ها ═══
-export function ordersList(req, res, { user }) {
+export function ordersList(req, res, { user, query }) {
   const orders = [...getDb().orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const { slice, cur, pages } = paginate(orders, query);
   const body = `
 <div class="table-wrap"><table class="tbl">
   <tr><th>کد</th><th>مشتری</th><th>قالب‌ها</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th><th>تغییر وضعیت</th></tr>
-  ${orders.map(o => {
+  ${slice.map(o => {
     const u = findOne('users', x => x.id === o.userId);
     const [lbl, cls] = statusMap[o.status] || [o.status, ''];
     return `<tr>
@@ -246,7 +264,7 @@ export function ordersList(req, res, { user }) {
       </form>
     </td></tr>`;
   }).join('')}
-</table></div>`;
+</table></div>${pagerHtml(cur, pages, '/admin/orders')}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت سفارش‌ها', active: 'orders', body });
 }
 
@@ -434,7 +452,10 @@ export function appProjectDetail(req, res, { user, project, query }) {
   const u = findOne('users', x => x.id === project.userId);
   const msgs = findMany('messages', m => m.threadKey === 'u:' + project.userId);
   const st = PROJECT_STATUS[project.status] || {};
+  const priceErr = query.err === 'price' ? `<div class="alert err">⛔ قیمت واردشده نامعتبر یا کمتر از حداقل (۵۰۰٬۰۰۰ تومان) است. می‌توانید بنویسید: <b>2,000,000</b> یا <b>۲ میلیون</b>.</div>` : '';
+  
   const body = `
+${priceErr}
 <div class="admin-2col">
   <div style="display:grid;gap:18px">
     <div class="card panel">
@@ -459,14 +480,14 @@ export function appProjectDetail(req, res, { user, project, query }) {
       <form method="post" action="/admin/app-projects/${project.id}/quote" style="display:grid;gap:10px">
         <input type="hidden" name="_csrf" value="${user.__csrf}">
         <div class="form-grid">
-          <div class="field"><label class="req">قیمت نهایی (تومان)</label><input class="input" type="number" name="price" required min="500000" step="50000" value="${project.estimate?.total || ''}"></div>
+          <div class="field"><label class="req">قیمت نهایی (تومان)</label><input class="input" name="price" required value="${project.estimate?.total || ''}" placeholder="مثلاً 12,000,000 یا ۱۲ میلیون"></div>
           <div class="field"><label>یادداشت برای مشتری (اختیاری)</label><input class="input" name="note" maxlength="400" placeholder="مثلاً: شامل ۶ ماه پشتیبانی رایگان"></div>
         </div>
         <div class="flex">
           <button class="btn" type="submit">✅ تایید و اعلام به مشتری</button>
         </div>
       </form>
-      <form method="post" action="/admin/app-projects/${project.id}/reject" style="margin-top:10px" onsubmit="return confirm('رد شود؟')">
+      <form method="post" action="/admin/app-projects/${project.id}/reject" style="margin-top:10px" data-confirm="این سفارش رد شود؟ پیام دلیل برای کاربر ارسال می‌شود." data-ok-text="بله، رد کن">
         <input type="hidden" name="_csrf" value="${user.__csrf}">
         <input class="input" name="reason" maxlength="300" placeholder="دلیل رد (به مشتری اعلام می‌شود)" style="margin-bottom:8px">
         <button class="btn ghost sm" type="submit">✖ رد سفارش</button>
@@ -622,7 +643,7 @@ export function generatorPage(req, res, { user }) {
       <input type="hidden" name="_csrf" value="${user.__csrf}">
       <input type="hidden" name="token" id="genToken">
       <div class="form-grid">
-        <div class="field"><label>قیمت فروش (تومان)</label><input class="input" type="number" name="price" id="genPrice" value="690000" min="0" step="50000"></div>
+        <div class="field"><label>قیمت فروش (تومان)</label><input class="input" name="price" id="genPrice" value="690000" placeholder="مثلاً 690000"></div>
         <div class="field"><label>&nbsp;</label><label class="check-line"><input type="checkbox" name="published" checked> 🟢 انتشار فوری در فروشگاه</label></div>
       </div>
       <button class="btn" type="button" id="genPublishBtn">🚀 انتشار در فروشگاه</button>
@@ -654,7 +675,7 @@ export function handleGenPublish(req, res, ctx) {
     slug: slugify(spec.brand),
     description: `قالب ${T} با طراحی ${spec.dark ? 'تیره و مدرن' : 'روشن و مینیمال'}؛ تولیدشده با قالب‌ساز هوشمند اپ‌تم از پرامپت کاربر.`,
     longDescription: `این قالب با قالب‌ساز هوشمند اپ‌تم و بر اساس پرامپت «${spec.prompt.slice(0, 200)}» تولید شده است. شامل صفحات کامل (خانه، درباره ما، تماس) با پالت رنگی اختصاصی و بخش‌های: ${spec.sections.join('، ')}. خروجی HTML خالص بهینه به‌همراه نسخه‌های شروع Tailwind/Bootstrap/React/Vue در بسته دانلودی.`,
-    price: Math.max(0, Number(ctx.body.price) || 690000), salePrice: null,
+    price: Math.max(0, parseMoney(ctx.body.price) || 690000), salePrice: null,
     categoryIds: [({ shop: 1, corporate: 2, portfolio: 3, landing: 4, restaurant: 5, agency: 6, clinic: 2, edu: 2, travel: 4, blog: 3 })[spec.type] || 4],
     frameworks: [gen.framework],
     pages: 3,

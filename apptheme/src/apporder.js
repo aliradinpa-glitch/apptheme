@@ -374,7 +374,7 @@ export function renderAppTrack(req, res, ctx) {
       <div class="flex" style="flex-wrap:wrap">
         <form method="post" action="/apps/${esc(project.code)}/action"><input type="hidden" name="_csrf" value="${esc(csrf)}"><input type="hidden" name="action" value="second">
           <button class="btn lg" type="submit">✅ ادامه — پرداخت ${money(second)}</button></form>
-        <form method="post" action="/apps/${esc(project.code)}/action" onsubmit="return confirm('مطمئن هستید؟ بر اساس قوانین ۴۰٪ از پرداختی کسر می‌شود و بقیه به کیف پول برمی‌گردد.')"><input type="hidden" name="_csrf" value="${esc(csrf)}"><input type="hidden" name="action" value="cancel">
+        <form method="post" action="/apps/${esc(project.code)}/action" data-confirm="مطمئن هستید؟ بر اساس قوانین ۴۰٪ از پرداختی کسر می‌شود و بقیه به کیف پول برمی‌گردد." data-ok-text="بله، لغو کن"><input type="hidden" name="_csrf" value="${esc(csrf)}"><input type="hidden" name="action" value="cancel">
           <button class="btn ghost" type="submit">✖ انصراف و بازگشت به کیف پول</button></form>
       </div>
     </div>`;
@@ -389,7 +389,7 @@ export function renderAppTrack(req, res, ctx) {
     </div>`;
   } else if (project.status === 'completed') {
     actionBox = `<div class="card card-pad action-box" style="border-color:var(--ok)"><h3>🎉 پروژه تکمیل شد</h3><p class="muted small">۱۰٪ پاداش وفاداری به کیف پول شما واریز شد. اگر از نتیجه ناراضی هستید، تا ۷ روز می‌توانید ۹۰٪ وجه را پس بگیرید.</p>
-    <form method="post" action="/apps/${esc(project.code)}/action" onsubmit="return confirm('درخواست بازگشت ۹۰٪ وجه به کیف پول؟ پروژه بسته می‌شود.')"><input type="hidden" name="_csrf" value="${esc(csrf)}"><input type="hidden" name="action" value="refund90">
+    <form method="post" action="/apps/${esc(project.code)}/action" data-confirm="درخواست بازگشت ۹۰٪ وجه به کیف پول؟ پروژه بسته می‌شود." data-ok-text="بله، بازگشت وجه"><input type="hidden" name="_csrf" value="${esc(csrf)}"><input type="hidden" name="action" value="refund90">
       <button class="btn ghost" type="submit">😔 ناراضی هستم — بازگشت ${fa(POLICY.REFUND_FINAL)}٪ به کیف پول</button></form></div>`;
   } else if (project.status === 'refunded') {
     actionBox = `<div class="card card-pad action-box" style="border-color:var(--info)"><h3>💸 بازگشت وجه انجام شد</h3><p class="muted small">${fa(POLICY.REFUND_FINAL)}٪ مبلغ به کیف پول شما واریز شد. از <a href="/account/wallet" style="color:var(--primary)">کیف پول</a> درخواست برداشت بزنید تا خودکار به حسابتان واریز شود.</p></div>`;
@@ -514,8 +514,8 @@ export function handleAdminQuote(req, res, ctx, id) {
   const { body } = ctx;
   const project = findOne('projects', p => p.id === id);
   if (!project || project.status !== 'submitted') return { redirect: '/admin/app-projects' };
-  const price = Math.round(Number(normalize_digits(body.price) || 0));
-  if (price < 500_000) return { redirect: `/admin/app-projects/${id}` };
+  const price = parseMoney(body.price);
+  if (!Number.isFinite(price) || price < 500_000) return { redirect: `/admin/app-projects/${id}?err=price` };
   const note = cleanText(body.note, 500);
   updateOne('projects', p => p.id === id, { finalPrice: price, status: 'quoted', quoteNote: note, quotedAt: new Date().toISOString() });
   const dep = round50k(price * POLICY.DEPOSIT / 100);
@@ -533,4 +533,4 @@ export function handleAdminReject(req, res, ctx, id) {
   return { redirect: `/admin/app-projects/${id}?rejected=1` };
 }
 
-import { normalizeDigits as normalize_digits } from './util.js';
+import { normalizeDigits as normalize_digits, parseMoney } from './util.js';

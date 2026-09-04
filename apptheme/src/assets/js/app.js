@@ -49,15 +49,6 @@
 
   // ── توست ──
   var toastBox = null;
-  window.tlToast = function (msg, type) {
-    if (!toastBox) { toastBox = document.createElement('div'); toastBox.id = 'toasts'; document.body.appendChild(toastBox); }
-    var t = document.createElement('div');
-    t.className = 'toast ' + (type || '');
-    t.textContent = msg;
-    toastBox.appendChild(t);
-    setTimeout(function () { t.style.opacity = '0'; t.style.transition = '.4s'; }, 3200);
-    setTimeout(function () { t.remove(); }, 3700);
-  };
 
   // ── سبد خرید (localStorage) ──
   var CART = 'tl_cart';

@@ -31,7 +31,7 @@
 
   btn.addEventListener('click', function () {
     var prompt = document.getElementById('genPrompt').value || '';
-    if (prompt.trim().length < 8) { alert('پرامپت طولانی‌تری بنویس (حداقل ۸ حرف).'); return; }
+    if (prompt.trim().length < 8) { window.tlAlert('پرامپت طولانی‌تری بنویس (حداقل ۸ حرف) ✍️', 'err'); return; }
     btn.disabled = true; btn.textContent = '… در حال ساخت قالب';
     fetch('/admin/generator/generate', {
       method: 'POST',

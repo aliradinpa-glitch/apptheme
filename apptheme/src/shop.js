@@ -260,8 +260,16 @@ export function handleAccountDownload(req, res, ctx, productId) {
 // ─── پیش‌نمایش زنده قالب ───
 export function servePreview(req, res, product) {
   const { home } = generateSite(product, { styleInline: true });
+  const guard = `
+<style>
+#tl-guard{position:fixed;bottom:0;inset-inline:0;z-index:99999;background:linear-gradient(135deg,#1e1b4b,#0e7490);color:#fff;text-align:center;padding:10px 16px;font:600 .82rem/1.8 Vazirmatn,Tahoma,sans-serif;direction:rtl}
+#tl-guard b{color:#fbbf24}
+</style>
+<div id="tl-guard">🔒 پیش‌نمایش رسمی اپ‌تم — <b>${esc(product.title.split('—')[0].trim())}</b> | نسخه کامل (همه صفحات + فایل استارتر + مستندات) فقط پس از خرید | apptheme.ir</div>
+<script>document.addEventListener('contextmenu',function(e){e.preventDefault();});document.addEventListener('keydown',function(e){if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C'].includes(e.key.toUpperCase())))e.preventDefault();});</script>`;
+  const html = home.replace('</body>', guard + '</body>');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  res.end(home);
+  res.end(html);
   return true;
 }
 

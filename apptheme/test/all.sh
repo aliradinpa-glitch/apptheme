@@ -250,13 +250,34 @@ ck "purge-sara-gone" "اشتباه است" "$(curl -s -b /tmp/pp.txt -X POST $B/
 ck "purge-products-kept" "قالب جدید" "$(curl -s -b $JAR $B/admin/products)"
 ck "purge-admin-kept" "داشبورد" "$(curl -s -b $JAR $B/admin)"
 
-# ─── ۱۵. امنیت ───
+# ─── ۱۵. پول‌پارس مقاوم + امکانات + ناوبری ───
+ck "parse-money-unit" "20000000" "$(node -e "import('./src/util.js').then(m=>console.log(m.parseMoney('20,000,000')))")"
+ck "parse-money-fa" "20000000" "$(node -e "import('./src/util.js').then(m=>console.log(m.parseMoney('۲۰ میلیون')))")"
+ck "parse-money-dots" "3500000" "$(node -e "import('./src/util.js').then(m=>console.log(m.parseMoney('3.500.000')))")"
+# قیمت‌گذاری با ویرگول — باید موفق شود (روی سفارش تازه)
+CSRW=$(curl -s -b $LJ -c $LJ $B/apps/wizard | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+curl -s -b $LJ -o /dev/null -X POST $B/apps/order --data-urlencode "_csrf=$CSRW" --data-urlencode "type=shop" --data-urlencode "name=تست ویرگول" --data-urlencode "desc=یه اپ تستی برای قیمت‌گذاری با ویرگول" --data-urlencode "feat=ورود" --data-urlencode "contact=09121110000"
+APID3=$(curl -s -b $JAR $B/admin/app-projects | grep -o 'app-projects/[0-9]*' | sort -t/ -k2 -n | tail -1 | grep -o '[0-9]*')
+R=$(curl -s -b $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/admin/app-projects/$APID3/quote --data-urlencode "_csrf=$MA" --data-urlencode "price=12,000,000 تومان" --data-urlencode "note=تست ویرگول")
+ck "quote-comma-price" "quoted=1" "$R"
+# قیمت خیلی کم — باید err=price بدهد
+curl -s -b $JAR -o /dev/null -X POST $B/admin/app-projects/$APID3/quote --data-urlencode "_csrf=$MA" --data-urlencode "price=100000" >/dev/null 2>&1
+ck "quote-low-price-err" "" "$(curl -s -b $JAR "$B/admin/app-projects/$APID3?err=price" | grep -c 'نامعتبر')"
+ck "product-features-shown" "پشتیبانی ۶ ماهه" "$(curl -s $B/templates/novin-shop)"
+ck "product-tier-badge" "سطح" "$(curl -s $B/templates/novin-shop)"
+ck "preview-guard-bar" "پیش‌نمایش رسمی" "$(curl -s $B/templates/novin-shop/preview)"
+ck "preview-blocks-contextmenu" "contextmenu" "$(curl -s $B/templates/novin-shop/preview)"
+ck "catalog-page1" "قالب" "$(curl -s "$B/templates?page=1")"
+ck "ui-modal-js" "tlConfirm" "$(curl -s $B/assets/js/ui.js)"
+ck "product-nav-prevnext" "جابه‌جایی بین قالب‌ها" "$(curl -s $B/templates/novin-shop)"
+
+# ─── ۱۶. امنیت ───
 ck "no-csrf-like" 'ok' "$(curl -s -b $LJ -X POST $B/api/products/1/like)"
 ck "admin-guard" "" "$(curl -s -o /dev/null -w "%{redirect_url}" $B/admin/settings | grep -c 'admin')"
 ck "quote-guard" "/login" "$(curl -s -o /dev/null -w "%{redirect_url}" -X POST $B/admin/app-projects/$APID/quote --data-urlencode "price=1")"
 ck "404" "صفحه پیدا نشد" "$(curl -s $B/xyz)"
 
-# ─── ۱۶. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
+# ─── ۱۷. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
 for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
   pid=$(basename $(dirname $p)); [ "$pid" = "$$" ] && continue
   cmd=$(tr '\0' ' ' < $p 2>/dev/null)

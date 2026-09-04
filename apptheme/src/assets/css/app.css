@@ -362,3 +362,14 @@ kbd.code { background: var(--surface-2); border: 1px solid var(--border); border
 /* کیف پول */
 .wallet-hero { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, var(--surface)), color-mix(in srgb, var(--accent) 8%, var(--surface))); }
 .wallet-bal { font-size: 2rem; font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.4; }
+
+/* ═══ دکمه پیش‌نمایش زنده (ویژه) ═══ */
+.btn-lg-live{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 26px;border-radius:14px;font-weight:700;font-size:1rem;color:#fff;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#06b6d4);box-shadow:0 8px 26px rgba(6,182,212,.35);position:relative;overflow:hidden;transition:.25s;border:0;cursor:pointer}
+.btn-lg-live::after{content:'';position:absolute;top:0;inset-inline-start:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:liveShine 2.8s infinite}
+.btn-lg-live:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(6,182,212,.5)}
+@keyframes liveShine{0%{inset-inline-start:-80%}55%,100%{inset-inline-start:130%}}
+.btn-lg-live::before{content:'👁';font-size:1.05rem}
+
+/* ═══ صفحه‌بندی ═══ */
+.pager{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:26px}
+.pager .pg-num[aria-current="page"]{box-shadow:0 6px 18px rgba(109,94,242,.35)}

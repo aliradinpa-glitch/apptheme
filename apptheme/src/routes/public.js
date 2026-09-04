@@ -209,7 +209,19 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
         <button class="btn soft" type="submit">جستجو</button>
       </form>
       ${products.length
-        ? `<div class="grid-products">${products.map(p => productCard(p, user)).join('')}</div>`
+        ? (() => {
+            const PER = 9;
+            const pages = Math.ceil(products.length / PER);
+            const cur = Math.min(Math.max(1, parseInt(query.page) || 1), pages);
+            const slice = products.slice((cur - 1) * PER, cur * PER);
+            const pager = pages > 1 ? `<div class="pager">${[
+              cur > 1 ? `<a class="btn ghost sm" href="${qs({ page: cur - 1 })}">قبلی →</a>` : '',
+              ...Array.from({ length: pages }, (_, i) =>
+                `<a class="btn ${i + 1 === cur ? '' : 'ghost'} sm pg-num" href="${qs({ page: i + 1 })}" ${i + 1 === cur ? 'aria-current="page"' : ''}>${fa(i + 1)}</a>`),
+              cur < pages ? `<a class="btn ghost sm" href="${qs({ page: cur + 1 })}">← بعدی</a>` : '',
+            ].join('')}</div>` : '';
+            return `<div class="grid-products">${slice.map(x => productCard(x, user)).join('')}</div>${pager}`;
+          })()
         : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
     </div>
   </div>
@@ -226,6 +238,14 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
 // ─── صفحه محصول ───
 export function productPage(req, res, ctx) {
   const { user, baseUrl, product, csrf, ok = '', error = '' } = ctx;
+  // سطح قالب بر اساس قیمت
+  const effP = product.salePrice || product.price;
+  const tier = effP < 500000 ? { t: 'اقتصادی', c: 'ok' } : effP < 1200000 ? { t: 'استاندارد', c: 'primary' } : { t: 'حرفه‌ای 👑', c: 'warn' };
+  // قالب قبلی/بعدی برای ناوبری
+  const all = findMany('products', x => x.published).sort((a, b) => a.id - b.id);
+  const idx = all.findIndex(x => x.id === product.id);
+  const prev = all[(idx - 1 + all.length) % all.length];
+  const next = all[(idx + 1) % all.length];
   const { rating, count } = productRating(product.id);
   const likes = productLikes(product.id);
   const liked = user ? !!findOne('likes', l => l.productId === product.id && l.userId === user.id) : false;
@@ -312,18 +332,26 @@ export function productPage(req, res, ctx) {
           </button>
         </div>
         <h1 style="font-size:1.2rem; line-height:1.7">${esc(product.title)}</h1>
-        <p class="muted small" style="margin:8px 0 16px">${esc(product.description)}</p>
+        <p class="muted small" style="margin:8px 0 10px">${esc(product.description)}</p>
+        <span class="badge ${tier.c}" style="margin-bottom:8px">سطح ${tier.t}</span> <span class="badge soft">${fa((product.features || []).length)} امکان</span>
         ${product.salePrice ? `<div class="muted small"><del>${money(product.price)}</del></div>` : ''}
         <div class="p-off">${money(price)}</div>
         <div style="display:grid; gap:10px; margin:18px 0">
           <button class="btn lg" data-add-to-cart="${product.id}">افزودن به سبد خرید</button>
-          <a class="btn lg ghost" href="/templates/${esc(product.slug)}/preview" target="_blank" rel="noopener">👁 پیش‌نمایش زنده قالب</a>
+          <a class="btn-lg-live" href="/templates/${esc(product.slug)}/preview" target="_blank" rel="noopener">پیش‌نمایش زنده قالب</a>
         </div>
         <ul class="feature-list">
           ${(product.features || []).map(f => `<li>${esc(f)}</li>`).join('')}
           <li>لینک دانلود آنی پس از پرداخت</li>
           <li>به‌روزرسانی رایگان مادام‌العمر</li>
         </ul>
+      </div>
+    </div>
+    <div class="card card-pad" style="margin-top:22px">
+      <div class="between flex-wrap" style="gap:10px">
+        <a class="btn ghost sm" href="/templates/${esc(prev.slug)}">→ ${esc(prev.title.split('—')[0].trim())}</a>
+        <span class="muted small">جابه‌جایی بین قالب‌ها</span>
+        <a class="btn ghost sm" href="/templates/${esc(next.slug)}">${esc(next.title.split('—')[0].trim())} ←</a>
       </div>
     </div>
   </div>

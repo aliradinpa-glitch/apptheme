@@ -133,6 +133,7 @@ function footer() {
   </div>
   <div class="footer-bottom container">© ${new Date().toLocaleDateString('fa-IR', { year: 'numeric' })} تمامی حقوق برای اپ‌تم محفوظ است. | ساخته‌شده با ❤ در ایران</div>
 </footer>
+<script src="/assets/js/ui.js" defer></script>
 <script src="/assets/js/app.js" defer></script>`;
 }
 
@@ -212,6 +213,7 @@ export function adminPage({ user, title, active = '', body, desc = '', csrf = ''
   ${sidebar}
   <div class="admin-main">${topbar}<div class="admin-content">${body}</div></div>
 </div>
+<script src="/assets/js/ui.js" defer></script>
 <script src="/assets/js/admin.js" defer></script>`;
   return baseHtml({ title: `${title} — پنل مدیریت اپ‌تم`, desc: desc || title, body: html, adminMode: true, noindex: true, csrf });
 }

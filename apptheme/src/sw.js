@@ -1,8 +1,8 @@
 // ═══ Service Worker اپ‌تم — اپ موبایل نصب‌شدنی + آفلاین ═══
-const VERSION = 'appteam-v1';
+const VERSION = 'appteam-v3';
 const CORE = [
   '/', '/offline', '/templates', '/apps',
-  '/assets/css/app.css', '/assets/js/app.js', '/assets/js/cart.js', '/assets/js/apps.js',
+  '/assets/css/app.css', '/assets/js/ui.js', '/assets/js/app.js', '/assets/js/cart.js', '/assets/js/apps.js',
   '/assets/fonts/Vazirmatn-Regular.woff2', '/assets/fonts/Vazirmatn-Medium.woff2', '/assets/fonts/Vazirmatn-Bold.woff2',
   '/assets/icons/icon-192.png', '/favicon.svg',
 ];

@@ -167,7 +167,16 @@ function cssGen(spec) {
   const bg = dark ? '#0e1118' : '#f7f8fc', card = dark ? '#161b27' : '#ffffff';
   const ink = dark ? '#e9ecf5' : '#1c2333', mut = dark ? '#98a2bd' : '#66708c';
   const bord = dark ? '#252b3c' : '#e7eaf4', nav = dark ? 'rgba(14,17,24,.86)' : 'rgba(255,255,255,.86)';
-  return `:root{--c1:${c1};--c2:${c2};--ac:${ac};--ink:${ink};--mut:${mut};--bg:${bg};--card:${card};--bord:${bord};--nav:${nav}}
+  const hv = [...(spec.brand + spec.type)].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5) % 4;
+  const RAD = [10, 18, 26, 14][hv];
+  const H1 = [2.3, 2.7, 2.0, 3.0][hv];
+  const variantCss = `:root{--rad:${RAD}px}
+.hero h1{font-size:${H1}rem}
+.btn{border-radius:${[10, 999, 6, 16][hv]}px}
+${hv === 1 ? '.sec-head{text-align:start}' : ''}
+${hv === 2 ? '.g3 .card{border-top:4px solid var(--c1)}' : ''}
+${hv === 3 ? 'body{background-image:radial-gradient(color-mix(in srgb,var(--c1) 7%,transparent) 1.4px,transparent 1.4px);background-size:24px 24px}' : ''}`;
+  const baseCss = `:root{--c1:${c1};--c2:${c2};--ac:${ac};--ink:${ink};--mut:${mut};--bg:${bg};--card:${card};--bord:${bord};--nav:${nav}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Vazirmatn,Tahoma,sans-serif;background:var(--bg);color:var(--ink);line-height:1.9;direction:rtl}
 a{color:inherit;text-decoration:none}
@@ -225,6 +234,7 @@ footer li{margin-bottom:8px;font-size:.87rem}
 .copy{border-top:1px solid #232b47;text-align:center;padding-top:16px;font-size:.78rem}
 .cta-band{background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 14%,var(--card)),color-mix(in srgb,var(--c2) 12%,var(--card)));border:1px solid var(--bord);border-radius:18px;padding:40px 22px;text-align:center}
 @media(max-width:760px){nav.links{display:none}.hero h1{font-size:1.55rem}footer .cols{grid-template-columns:1fr}}`;
+  return baseCss + variantCss;
 }
 
 // ─── ساخت صفحات ───

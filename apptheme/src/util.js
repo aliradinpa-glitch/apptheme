@@ -60,6 +60,22 @@ export function normalizeDigits(v = '') {
   });
 }
 
+// ─── پارس مقاوم مبالغ: «۲۰٬۰۰۰٬۰۰۰»، «20,000,000»، «20.000.000»، «۲۰ میلیون»، «3م» ───
+export function parseMoney(v) {
+  let s = normalizeDigits(String(v ?? '')).trim();
+  if (!s) return NaN;
+  s = s.replace(/تومان|تومن|toman|Toman/g, '');
+  let mult = 1;
+  if (/میلیون|میليون|[Mm]illion/.test(s)) { mult = 1e6; s = s.replace(/میلیون|میليون|[Mm]illion/g, ' '); }
+  else if (/هزار|[Kk]یلو|\b[Kk]\b/.test(s)) { mult = 1e3; s = s.replace(/هزار|[Kk]یلو|\b[Kk]\b/g, ' '); }
+  else if (/\bم\b/.test(s)) { mult = 1e6; s = s.replace(/\bم\b/g, ' '); }
+  s = s.replace(/[,٬،'\s]/g, '');
+  if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); // نقطهٔ هزارگان اروپایی
+  if (!/^[\d.]+$/.test(s)) return NaN;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? Math.round(n * mult) : NaN;
+}
+
 export function normalizeMobile(v = '') {
   const m = normalizeDigits(v).replace(/[\s\-()]/g, '');
   if (/^(\+98|0098|98)?(9\d{9})$/.test(m)) {
