@@ -860,7 +860,9 @@ export function proPage(req, res, { user, baseUrl, csrf }) {
       <p class="muted small">${esc(p.desc || '')}</p>
       <div class="pro-power"><span>قدرت هوش مصنوعی</span><b>${fa(p.ai)}٪ از قدرت ادمین</b></div>
       <span class="badge soft" style="margin-top:6px">${fa(p.days)} روز دسترسی کامل</span>
-      <a class="btn" style="margin-top:12px;width:100%" href="${user ? '/ai' : '/login?next=/ai'}">${user ? 'فعال‌سازی از استودیو' : 'ورود و فعال‌سازی'}</a>
+      ${user
+        ? `<button class="btn" style="margin-top:12px;width:100%" data-sub="${p.key}">خرید اشتراک</button>`
+        : `<a class="btn" style="margin-top:12px;width:100%" href="/login?next=/ai">ورود و فعال‌سازی</a>`}
     </div>`).join('');
   const body = `
 <section class="section" style="padding-top:26px">
@@ -882,7 +884,33 @@ export function proPage(req, res, { user, baseUrl, csrf }) {
       </ul>
       <p class="hint center" style="margin-top:12px">پرداخت مستقیم از کیف پول (شارژ از صفحهٔ کیف پول) — بلافاصله فعال می‌شود.</p>
     </div>
+    <div id="subErr" class="alert err" hidden style="max-width:46rem;margin:14px auto 0"></div>
   </div>
-</section>`;
+</section>
+${user ? `<script>
+(function () {
+  var csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
+  document.querySelectorAll('[data-sub]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      b.disabled = true; b.textContent = 'در حال پرداخت…';
+      fetch('/ai/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: JSON.stringify({ plan: b.getAttribute('data-sub') }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.ok) { location.href = '/ai?ok=sub'; return; }
+          b.disabled = false; b.textContent = 'تلاش دوباره';
+          var er = document.getElementById('subErr');
+          if (er) { er.hidden = false; er.textContent = d.error || 'خطایی رخ داد؛ دوباره تلاش کن.'; }
+          if (window.tlToast) window.tlToast(d.error || 'خطا', 'err', { title: 'اشتراک پرو' });
+        })
+        .catch(function () {
+          b.disabled = false; b.textContent = 'تلاش دوباره';
+          var er = document.getElementById('subErr');
+          if (er) { er.hidden = false; er.textContent = 'خطای شبکه؛ دوباره تلاش کن.'; }
+          if (window.tlToast) window.tlToast('خطای شبکه؛ دوباره تلاش کن', 'err', { title: 'اشتراک پرو' });
+        });
+    });
+  });
+})();
+</script>` : ''}`;
   return page({ user, title: 'اشتراک پرو | اپ‌تم', desc: 'اشتراک پرو استودیوی هوش مصنوعی اپ‌تم — ساخت قالب، افزونه، فروشگاه و اپ اندروید', url: baseUrl + '/pro', body, csrf });
 }

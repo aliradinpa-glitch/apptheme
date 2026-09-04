@@ -31,7 +31,7 @@ function planOf(db, key) {
 }
 
 // ═══════════ صفحه استودیو (پلنها یا استودیو) ═══════════
-export function userStudioPage(req, res, { user, csrf, baseUrl }) {
+export function userStudioPage(req, res, { user, csrf, baseUrl, query }) {
   const db = getDb();
   const plans = proPlansOf(db);
   const st = proState(user);
@@ -46,16 +46,18 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
         <p class="muted small">${p.desc}</p>
         <div class="pro-power"><span>قدرت هوش مصنوعی</span><b>${fa(p.ai)}٪ از قدرت ادمین</b></div>
         <span class="badge soft" style="margin-top:6px">${fa(p.days)} روز دسترسی به استودیو</span>
-        <button class="btn" style="margin-top:12px;width:100%" data-sub="${p.key}">${st.expired && st.plan?.key === p.key ? '🔄 تمدید' : '🚀 خرید اشتراک'}</button>
+        <button class="btn" style="margin-top:12px;width:100%" data-sub="${p.key}">${st.expired && st.plan?.key === p.key ? 'تمدید اشتراک' : 'خرید اشتراک'}</button>
       </div>`).join('');
     const body = `
 <section class="section" style="padding-top:26px">
   <div class="container">
+    ${query && query.ok === 'sub' ? `<div class="alert ok" style="max-width:46rem;margin:0 auto 16px">اشتراک پرو با موفقیت فعال شد! همین حالا میتوانی قالب، افزونه، فروشگاهساز یا اپ اندروید بسازی.</div>` : ''}
     <div class="section-head"><h1 style="font-size:1.6rem">👥 استودیوی پرو — اشتراک ماهانه</h1>
       <span class="muted">قالبساز، افزونهساز، فروشگاهساز و اپ اندروید؛ قدرت هوش مصنوعی هر پلن را مدیریت تنظیم میکند. <b>بهترین پلن = ۵۰٪ قدرت هوش مصنوعی ادمین</b> — ادمین ۱۰۰٪ مافوق حرفهای.</span>
     </div>
     <div class="alert info" style="max-width:46rem;margin:0 auto 18px">💰 موجودی کیف پول شما: <b>${money(wal)}</b> — اگر کافی نیست از <a href="/account/wallet" style="color:var(--primary)">صفحه کیف پول</a> شارژ کن. پرداخت مستقیم از کیف پول کسر میشود و بلافاصله فعال است.</div>
     <div class="tier-grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${cards}</div>
+    <div id="subErr" class="alert err" hidden style="max-width:46rem;margin:14px auto 0"></div>
     <p class="muted small" style="text-align:center;margin-top:16px">🔓 بدون اشتراک هم میتوانی از <a href="/apps">سفارش ساخت اپ</a> و خرید قالبهای آماده استفاده کنی.</p>
   </div>
 </section>
@@ -68,10 +70,18 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
       fetch('/ai/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: JSON.stringify({ plan: b.getAttribute('data-sub') }) })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          if (d.ok) { location.href = '/ai?ok=sub'; }
-          else { b.disabled = false; b.textContent = '🚀 خرید اشتراک'; alert(d.error || 'خطا'); }
+          if (d.ok) { location.href = '/ai?ok=sub'; return; }
+          b.disabled = false; b.textContent = 'تلاش دوباره';
+          var er = document.getElementById('subErr');
+          if (er) { er.hidden = false; er.textContent = d.error || 'خطایی رخ داد؛ دوباره تلاش کن.'; }
+          if (window.tlToast) window.tlToast(d.error || 'خطا', 'err', { title: 'اشتراک پرو' });
         })
-        .catch(function () { b.disabled = false; b.textContent = '🚀 خرید اشتراک'; });
+        .catch(function () {
+          b.disabled = false; b.textContent = 'تلاش دوباره';
+          var er = document.getElementById('subErr');
+          if (er) { er.hidden = false; er.textContent = 'خطای شبکه؛ دوباره تلاش کن.'; }
+          if (window.tlToast) window.tlToast('خطای شبکه؛ دوباره تلاش کن', 'err', { title: 'اشتراک پرو' });
+        });
     });
   });
 })();

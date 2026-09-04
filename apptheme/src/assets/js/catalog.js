@@ -47,9 +47,10 @@
 
   // ── خرید/حذف روی کارت — بدون رفرش ──
   function api(method, url, body) {
+    var csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
     return fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF': csrf },
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) { return r.json(); });
   }
@@ -66,15 +67,17 @@
         var id = btn.getAttribute('data-cart-toggle');
         var wasIn = btn.classList.contains('cart-in');
         btn.disabled = true;
-        api('POST', wasIn ? '/cart/remove' : '/cart/add', { productId: id }).then(function (d) {
+        var op = window.tlCart
+          ? (wasIn ? window.tlCart.remove(id) : window.tlCart.add(id))
+          : api('POST', wasIn ? '/cart/remove' : '/cart/add', { productId: id });
+        op.then(function (d) {
           btn.disabled = false;
-          if (!d.ok) return;
+          if (!d || d.ok === false) return;
           paintBtn(btn, !wasIn);
-          if (window.tlCart) { window.tlCart.summary = d; }
-          var badge = document.getElementById('cartCount');
-          if (badge) { badge.hidden = !d.count; badge.textContent = Number(d.count || 0).toLocaleString('fa-IR'); }
-          window.tlToast(wasIn ? 'از سبد حذف شد' : 'به سبد خرید اضافه شد ✓', wasIn ? '' : 'ok');
-        }).catch(function () { btn.disabled = false; window.tlAlert('خطای شبکه', 'err'); });
+        }).catch(function () {
+          btn.disabled = false;
+          window.tlToast('خطا در ارتباط با سرور؛ دوباره تلاش کن', 'err', { title: 'سبد خرید' });
+        });
       });
     });
   }

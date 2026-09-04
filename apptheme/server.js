@@ -45,7 +45,7 @@ setInterval(() => {
 // ─── ابزار پاسخ ───
 function send(req, res, code, html) {
   const buf = Buffer.isBuffer(html) ? html : Buffer.from(html);
-  const heads = { 'Content-Type': 'text/html; charset=utf-8' };
+  const heads = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' };
   if (buf.length > 900 && /gzip/i.test(req.headers['accept-encoding'] || '')) {
     heads['Content-Encoding'] = 'gzip';
     res.writeHead(code, heads);
