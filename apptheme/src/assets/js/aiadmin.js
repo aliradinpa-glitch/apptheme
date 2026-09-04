@@ -126,9 +126,12 @@
     api('/admin/ai/analyze', { kind: kind, prompt: prompt, tier: tierKey }).then(function (d) {
       if (!d.ok) return;
       var o = d.out;
-      showOut('<div class="alert info" style="margin-top:4px"><b>🔮 تحلیل هوش مصنوعی:</b> ' + o.label +
+      var intel = d.intelligence || {};
+      showOut('<div class="alert info" style="margin-top:4px"><b>🔮 تحلیل هوشمند:</b> ' + o.label +
         ' — پلتفرم: <b>' + o.platform + '</b><br><span class="small">' + (o.features || []).map(function (f) { return '✓ ' + f; }).join(' · ') + '</span>' +
-        '<br>💰 قیمت پیشنهادی: <b>' + Number(o.price).toLocaleString('fa-IR') + ' تومان</b> · ⏱ زمان تخمینی ساخت: <b>' + (d.eta || '') + '</b> <span class="small muted">(سطح ' + (d.tierInfo ? d.tierInfo.icon + ' ' + d.tierInfo.label : '') + ' — ' + (d.tierInfo ? d.tierInfo.pages[0] + ' تا ' + d.tierInfo.pages[1] + ' صفحه' : '') + ')</span></div>');
+        '<br>🧠 امتیاز آمادگی: <b>' + (intel.score || 0) + '٪</b> · اطمینان: <b>' + (intel.confidence || 0) + '٪</b> · سبک پیشنهادی: <b>' + (intel.style || 'auto') + '</b>' +
+        '<br>💰 قیمت پیشنهادی: <b>' + Number(o.price).toLocaleString('fa-IR') + ' تومان</b> · ⏱ زمان تخمینی ساخت: <b>' + (d.eta || '') + '</b>' +
+        '<br><span class="small muted">ارتقای خودکار: ' + (intel.requirements || []).slice(0,4).join(' · ') + '</span></div>');
     });
   }
   ['pfPrompt', 'stPrompt', 'apPrompt', 'sfPrompt'].forEach(function (id) {

@@ -188,6 +188,7 @@ export function productCard(p, user = null, cartIds = []) {
 export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] }) {
   let products = findMany('products', p => p.published);
   const q = (query.q || '').trim();
+  const qNorm = q.toLocaleLowerCase('fa-IR').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک');
   const cat = query.cat || '';
   const fw = query.fw || '';
   const sort = query.sort || 'new';
@@ -195,7 +196,10 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
   const sale = query.sale === '1';
   const time = query.time || '';
 
-  if (q) products = products.filter(p => (p.title + ' ' + (p.tags || []).join(' ') + ' ' + p.description).includes(q));
+  if (qNorm) products = products.filter(p => {
+    const hay = (p.title + ' ' + (p.tags || []).join(' ') + ' ' + (p.description || '')).toLocaleLowerCase('fa-IR').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک');
+    return hay.includes(qNorm);
+  });
   if (tier) products = products.filter(p => {
     const eff = p.salePrice || p.price;
     return tier === 'eco' ? eff < 500000 : tier === 'std' ? (eff >= 500000 && eff < 1200000) : eff >= 1200000;
@@ -208,7 +212,7 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
   }
   if (cat) {
     const c = findOne('categories', x => x.slug === cat);
-    if (c) products = products.filter(p => p.categoryIds.includes(c.id));
+    if (c) products = products.filter(p => (p.categoryIds || []).includes(c.id));
   }
   if (fw) products = products.filter(p => (p.frameworks || []).includes(fw));
   if (sort === 'cheap') products = products.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
@@ -300,6 +304,32 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
   </div>
 </div>
 <script src="/assets/js/catalog.js" defer></script>`;
+  if (req.headers['x-partial'] === 'grid') {
+    return `<div id="catalogGrid">${products.length
+      ? (() => {
+          const PER = 9;
+          const pages = Math.ceil(products.length / PER);
+          const cur = Math.min(Math.max(1, parseInt(query.page) || 1), pages);
+          const slice = products.slice((cur - 1) * PER, cur * PER);
+          const pgBtn = (href, label, cls, isCur, title = '') => `<a class="btn sm ${cls}" href="${href}" ${isCur ? 'aria-current="page"' : ''} ${title ? `title="${title}"` : ''} data-finst>${label}</a>`;
+          let nums = [];
+          for (let n = 1; n <= pages; n++) {
+            if (n === 1 || n === pages || Math.abs(n - cur) <= 2) nums.push(n);
+            else if (nums[nums.length - 1] !== '…') nums.push('…');
+          }
+          const pager = pages > 1 ? `<div class="pager">
+            ${cur > 1 ? pgBtn(qs({ page: 1 }), '« اول', 'ghost', false, 'اولین صفحه') : ''}
+            ${cur > 1 ? pgBtn(qs({ page: cur - 1 }), '→ قبلی', 'ghost', false, 'صفحه قبل') : ''}
+            ${nums.map(n => n === '…' ? '<span class="pg-dots">•••</span>' : pgBtn(qs({ page: n }), fa(n), (n === cur ? '' : 'ghost ') + 'pg-num', n === cur)).join('')}
+            ${cur < pages ? pgBtn(qs({ page: cur + 1 }), 'بعدی ←', 'ghost', false, 'صفحه بعد') : ''}
+            ${cur < pages ? pgBtn(qs({ page: pages }), 'آخر »', 'ghost', false, 'آخرین صفحه') : ''}
+            <span class="pg-info">نمایش ${fa((cur - 1) * PER + 1)} تا ${fa(Math.min(cur * PER, products.length))} از ${fa(products.length)} قالب</span>
+          </div>` : '';
+          return `<div class="grid-products">${slice.map(x => productCard(x, user, cart.map(c => c.id))).join('')}</div>${pager}`;
+        })()
+      : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
+    </div><span data-rescount hidden>${fa(products.length)} قالب مطابق فیلترها</span>`;
+  }
   return page({
     user, active: 'templates',
     title: q ? `جستجو: ${q} | ${APP_NAME}` : `فروشگاه قالب‌های حرفه‌ای وب | ${APP_NAME}`,

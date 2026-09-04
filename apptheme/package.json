@@ -1,7 +1,7 @@
 {
   "name": "apptheme",
-  "version": "3.0.0",
-  "description": "اپتم — فروشگاه قالبهای حرفهای وب | پوسته نئون ریفت 2.0",
+  "version": "4.0.0",
+  "description": "اپ‌تم — فروشگاه قالب حرفه‌ای + استودیوی هوش مصنوعی Aura 2028-ready",
   "type": "module",
   "main": "server.js",
   "scripts": {

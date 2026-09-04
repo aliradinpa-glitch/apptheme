@@ -6,21 +6,25 @@
   if (!grid) return;
 
   // ── جستجوی زنده ──
-  var timer = null;
+  var timer = null, seq = 0, controller = null;
   function fetchGrid(url) {
     var hint = document.getElementById('searchHint');
+    var mine = ++seq;
+    if (controller) controller.abort();
+    controller = new AbortController();
     if (hint) hint.hidden = false;
-    fetch(url, { headers: { 'X-Partial': 'grid' } })
-      .then(function (r) { return r.text(); })
+    fetch(url, { headers: { 'X-Partial': 'grid' }, signal: controller.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(function (html) {
+        if (mine !== seq) return;
         var doc = new DOMParser().parseFromString(html, 'text/html');
         var fresh = doc.getElementById('catalogGrid');
         if (fresh) { grid.innerHTML = fresh.innerHTML; bindToggles(); }
         var rc = doc.querySelector('[data-rescount]');
         if (rc && window.__resCountEl) window.__resCountEl.textContent = rc.textContent;
-        if (hint) hint.hidden = true;
       })
-      .catch(function () { if (hint) hint.hidden = true; });
+      .catch(function (err) { if (err.name !== 'AbortError' && mine === seq && window.tlToast) window.tlToast('فیلترها بارگذاری نشد؛ دوباره تلاش کن', 'err', { title: 'فروشگاه' }); })
+      .finally(function () { if (mine === seq && hint) hint.hidden = true; });
   }
   // ── کلیک روی هر فیلتر (دسته/سطح/زمان/مرتب‌سازی) → اعمال درجا بدون رفرش کامل ──
   var rcEl = document.querySelector('[data-rescount]');

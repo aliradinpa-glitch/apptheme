@@ -1,0 +1,39 @@
+AURA v8 — دستورات نصب و اجرا
+================================
+پیش‌نیاز: Node.js نسخه 18 یا بالاتر
+
+PowerShell (Windows)
+--------------------
+cd .\apptheme
+node --version
+npm install
+npm start
+
+CMD (Windows)
+-------------
+cd apptheme
+node --version
+npm install
+npm start
+
+اگر پروژه روی پورت پیش‌فرض 3000 اجرا نشد:
+PowerShell:
+$env:PORT="3100"; npm start
+
+CMD:
+set PORT=3100 && npm start
+
+تست سلامت:
+PowerShell:
+Invoke-WebRequest http://localhost:3000/health
+CMD:
+curl http://localhost:3000/health
+
+تست جامع داخلی:
+PowerShell / Git Bash:
+bash .\test\all.sh
+
+نکته:
+- این نسخه بدون npm dependency اجباری اجرا می‌شود.
+- برای قابلیت‌های پرداخت/ایمیل واقعی، متغیرهای محیطی سرویس مربوطه را طبق GUIDE.md تنظیم کنید.
+- قبل از Deploy روی Render، PORT را دستی تنظیم نکنید؛ Render خودش PORT را تزریق می‌کند.

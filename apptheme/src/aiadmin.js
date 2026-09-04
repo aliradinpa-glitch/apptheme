@@ -12,6 +12,7 @@ import { convertTemplate } from './converter.js';
 import { makeZip } from './zip.js';
 import { generateFromSpec, parsePrompt, SPEC_TYPE_LABELS, MODE_LABELS } from './promptgen.js';
 import { esc, money, faNum, slugify } from './util.js';
+import { analyzeIntelligence, enrichSpec } from './ai-intelligence.js';
 const fa = faNum;
 import { randomToken } from './security.js';
 import fs from 'node:fs';
@@ -141,7 +142,8 @@ export function aiStudioPage(req, res, { user }) {
 export function apiAiAnalyze(req, res, { body, session }) {
   const kind = String(body.kind || 'template');
   const tierKey = TIERS.some(t => t.key === body.tier) ? body.tier : (body.tier ? detectTier(String(body.tier)) : 'gold');
-  const prompt = String(body.prompt || '');
+  const prompt = String(body.prompt || '').slice(0, 1600);
+  const intelligence = analyzeIntelligence(prompt, kind, tierKey);
   let out;
   const base = tierOf(tierKey);
   const strength = Math.round(strengthFor('admin', tierKey) * 100);
@@ -166,7 +168,7 @@ export function apiAiAnalyze(req, res, { body, session }) {
     const p = estimatePrice(tierKey, spec);
     out = { label: `قالب «${spec.brand}»`, platform: SPEC_TYPE_LABELS[spec.type], features: [`🎨 ${MODE_LABELS[spec.mode] || spec.mode}`, spec.dark ? '🌙 دارک' : '☀️ روشن', ...spec.sections.slice(0, 3)], price: p.price };
   }
-  return { json: { ok: true, tier: tierKey, tierInfo: { icon: TIER_ICONS[tierKey], label: base.label, level: base.level, pages: base.pages }, strength, eta: eta.label, out } };
+  return { json: { ok: true, intelligence, tier: tierKey, tierInfo: { icon: TIER_ICONS[tierKey], label: base.label, level: base.level, pages: base.pages }, strength, eta: eta.label, out } };
 }
 
 // ═══════════ API: ساخت واقعی ═══════════
@@ -185,49 +187,55 @@ export function apiAiBuild(req, res, { body, session }) {
     return { json: { ok: true, kind, token, url, note: 'در حال تحلیل و ساخت… (برای سایتهای بکاپدار چند لحظه صبر کن)' } };
   }
   if (kind === 'plugin') {
-    let spec = parsePluginPrompt(String(body.prompt || ''), tierKey);
+    const intelligence = analyzeIntelligence(String(body.prompt || '').slice(0, 1600), kind, tierKey);
+    let spec = parsePluginPrompt(String(body.prompt || '').slice(0, 1600), tierKey);
     if (seed) spec = varySpec(spec, seed);
+    spec = enrichSpec(spec, intelligence);
     const { files } = generatePlugin(spec, depth);
     const zipBuf = makeZip(files);
     saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, { sections: spec.features }).price;
     insert('aiProducts', { token, kind, title: `افزونه ${spec.name}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.name, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
+    return { json: { ok: true, kind, token, name: spec.name, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), intelligence, varied: !!seed } };
   }
   if (kind === 'store') {
-    let spec = parseStorePrompt(String(body.prompt || ''), tierKey);
+    const intelligence = analyzeIntelligence(String(body.prompt || '').slice(0, 1600), kind, tierKey);
+    let spec = parseStorePrompt(String(body.prompt || '').slice(0, 1600), tierKey);
     if (body.fw) spec.framework = body.fw;
     if (seed) spec = varySpec(spec, seed);
+    spec = enrichSpec(spec, intelligence);
     const { files, zipName } = generateStore(spec, depth);
     const zipBuf = makeZip(files);
     saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, spec).price;
     insert('aiProducts', { token, kind, title: `فروشگاهساز ${spec.brand} (${spec.framework})`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
+    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), intelligence, varied: !!seed } };
   }
   if (kind === 'app') {
-    let spec = parsePrompt(String(body.prompt || ''));
+    const intelligence = analyzeIntelligence(String(body.prompt || '').slice(0, 1600), kind, tierKey);
+    let spec = enrichSpec(parsePrompt(String(body.prompt || '').slice(0, 1600)), intelligence);
     if (seed) spec = varySpec(spec, seed);
     const { files } = generateApp(spec, tierKey, depth);
     const zipBuf = makeZip(files);
     saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, spec).price;
     insert('aiProducts', { token, kind, title: `اپ اندروید ${spec.brand}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
+    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), intelligence, varied: !!seed } };
   }
   if (kind === 'convert') {
     // مسیر جدا: آپلود فایل → analyze → build (در route جدا)
     return { json: { ok: false, error: 'تبدیل قالب باید با فایل انجام شود (دکمه ساخت را دوباره بزن)' } };
   }
   // قالبساز
-  const prompt = String(body.prompt || '');
-  let spec = parsePrompt(prompt);
+  const prompt = String(body.prompt || '').slice(0, 1600);
+  const intelligence = analyzeIntelligence(prompt, kind, tierKey);
+  let spec = enrichSpec(parsePrompt(prompt), intelligence);
   if (body.mode && MODE_LABELS[body.mode]) spec.mode = body.mode;
   if (seed) spec = varySpec(spec, seed);
   const gen = generateFromSpec(spec, { styleInline: true, depth });
   const price = estimatePrice(tierKey, spec).price;
   insert('aiProducts', { token, kind: 'template', title: `قالب ${spec.brand}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style } }, createdAt: new Date().toISOString() });
-  return { json: { ok: true, kind: 'template', token, name: spec.brand, sizeKB: Math.round(gen.home.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
+  return { json: { ok: true, kind: 'template', token, name: spec.brand, sizeKB: Math.round(gen.home.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), intelligence, varied: !!seed } };
 }
 
 // ═══════════ ویرایش مجدد خروجی (ادمین) ═══════════

@@ -11,6 +11,8 @@
     /* ─── مودال: همیشه وسط صفحه، بدون اسکرول صفحه ─── */
     '.tl-wrap{position:fixed;inset:0;z-index:99990;display:none;place-items:center;padding:14px;font-family:Vazirmatn,Tahoma,sans-serif;overflow:hidden}',
     '.tl-wrap.on{display:grid}',
+    'html.tl-modal-open,html.tl-modal-open body{overflow:hidden}',
+    '.tl-scroll{overflow:auto;padding:26px 22px 20px;overscroll-behavior:contain;max-height:calc(100dvh - 28px)}',
     '.tl-ov{position:absolute;inset:0;background:rgba(4,6,18,.72);backdrop-filter:blur(10px) saturate(1.2);-webkit-backdrop-filter:blur(10px) saturate(1.2);animation:tlFade .3s ease}',
     '@keyframes tlFade{from{opacity:0}to{opacity:1}}',
     '.tl-box{position:relative;width:min(100%,450px);max-height:calc(100dvh - 28px);display:flex;flex-direction:column;background:linear-gradient(168deg,#171e4d,#10153a 60%);border:1px solid rgba(124,92,255,.34);border-radius:24px;box-shadow:0 40px 120px rgba(2,3,14,.8),0 0 0 1px rgba(255,255,255,.04) inset,0 0 70px rgba(124,92,255,.16);animation:tlPop .38s cubic-bezier(.16,1,.3,1.15);overflow:hidden}',
@@ -101,36 +103,55 @@
   function tlModal(opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
+      var previousFocus = document.activeElement;
+      var scrollY = window.scrollY || 0;
       var w = document.createElement('div');
       w.className = 'tl-wrap';
+      var escHtml = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); };
       w.innerHTML =
         '<div class="tl-ov" data-close></div>' +
-        '<div class="tl-box" role="dialog" aria-modal="true">' +
+        '<div class="tl-box" role="dialog" aria-modal="true" aria-labelledby="tlTitle">' +
           '<button class="tl-close" type="button" data-close aria-label="بستن">×</button>' +
-          '<div style="overflow:auto;padding:26px 22px 20px">' +
-            '<div class="tl-ic' + (opts.danger ? ' danger' : '') + '">' + (opts.icon || '💡') + '</div>' +
-            (opts.title ? '<div class="tl-title">' + opts.title + '</div>' : '') +
+          '<div class="tl-scroll">' +
+            '<div class="tl-ic' + (opts.danger ? ' danger' : '') + '" aria-hidden="true">' + (opts.icon || '💡') + '</div>' +
+            (opts.title ? '<div class="tl-title" id="tlTitle">' + opts.title + '</div>' : '') +
             '<div class="tl-msg">' + (opts.html || '') + '</div>' +
-            (opts.input ? '<input class="tl-input" type="text" value="' + (opts.inputValue || '') + '" placeholder="' + (opts.inputPlaceholder || '') + '">' : '') +
+            (opts.input ? '<input class="tl-input" type="text" value="' + escHtml(opts.inputValue || '') + '" placeholder="' + escHtml(opts.inputPlaceholder || '') + '">' : '') +
             '<div class="tl-btns">' +
-              (opts.cancel ? '<button class="tl-btn tl-no" data-r="0" type="button">' + (opts.cancelText || 'انصراف') + '</button>' : '') +
-              '<button class="tl-btn tl-ok' + (opts.danger ? ' danger' : '') + '" data-r="1" type="button">' + (opts.okText || 'باشه') + '</button>' +
+              (opts.cancel ? '<button class="tl-btn tl-no" data-r="0" type="button">' + escHtml(opts.cancelText || 'انصراف') + '</button>' : '') +
+              '<button class="tl-btn tl-ok' + (opts.danger ? ' danger' : '') + '" data-r="1" type="button">' + escHtml(opts.okText || 'باشه') + '</button>' +
             '</div>' +
           '</div>' +
         '</div>';
       document.body.appendChild(w);
+      document.documentElement.classList.add('tl-modal-open');
       var input = w.querySelector('.tl-input');
-      requestAnimationFrame(function () {
-        w.classList.add('on');
-        if (input) setTimeout(function () { input.focus(); input.select(); }, 140);
-      });
+      var focusables = function () { return Array.prototype.slice.call(w.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter(function (el) { return !el.disabled && el.offsetParent !== null; }); };
       var done = false;
-      function close(v, skip) {
+      function cleanup() {
+        document.removeEventListener('keydown', onKey);
+        document.documentElement.classList.remove('tl-modal-open');
+        if (w.parentNode) w.remove();
+        try { window.scrollTo(0, scrollY); } catch {}
+        if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+      }
+      function close(v) {
         if (done) return; done = true;
         var box = w.querySelector('.tl-box');
-        box.style.animation = 'tlLeave .18s ease forwards';
-        setTimeout(function () { w.remove(); }, !skip ? 190 : 0);
-        if (!skip) resolve(v); else resolve(v);
+        if (box) box.style.animation = 'tlLeave .18s ease forwards';
+        setTimeout(function () { cleanup(); resolve(v); }, 190);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(false); return; }
+        if (e.key === 'Tab') {
+          var fs = focusables(); if (!fs.length) return;
+          var first = fs[0], last = fs[fs.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+        if (e.key === 'Enter' && input && document.activeElement === input && opts.submitOnEnter !== false) {
+          e.preventDefault(); close(input.value);
+        }
       }
       w.addEventListener('click', function (e) {
         if (e.target.hasAttribute('data-close')) return close(false);
@@ -141,9 +162,12 @@
           close(val);
         }
       });
-      document.addEventListener('keydown', function esc(e) {
-        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); close(false); }
-        if (e.key === 'Enter' && input) { document.removeEventListener('keydown', esc); close(input.value); }
+      document.addEventListener('keydown', onKey);
+      requestAnimationFrame(function () {
+        w.classList.add('on');
+        document.body.style.setProperty('--tl-lock-y', scrollY + 'px');
+        if (input) setTimeout(function () { input.focus(); input.select(); }, 80);
+        else { var fs = focusables(); if (fs[0]) fs[0].focus(); }
       });
     });
   }
