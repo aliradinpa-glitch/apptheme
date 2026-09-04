@@ -12,3 +12,8 @@ services:
         sync: false
       - key: NODE_VERSION
         value: "20"
+      # ── ماندگاری داده‌ها روی پلن رایگان (دیسک موقت!) — اختیاری ولی به‌شدت توصیه‌شده ──
+      - key: DB_SYNC_REPO      # مثل: myuser/apptheme-data (ریپوی خصوصی برای دیتابیس)
+        sync: false
+      - key: DB_SYNC_TOKEN     # توکن گیت‌هاب با دسترسی Contents: Read and Write
+        sync: false

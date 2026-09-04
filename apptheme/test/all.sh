@@ -256,6 +256,38 @@ ck "admin-guard" "" "$(curl -s -o /dev/null -w "%{redirect_url}" $B/admin/settin
 ck "quote-guard" "/login" "$(curl -s -o /dev/null -w "%{redirect_url}" -X POST $B/admin/app-projects/$APID/quote --data-urlencode "price=1")"
 ck "404" "صفحه پیدا نشد" "$(curl -s $B/xyz)"
 
+# ─── ۱۶. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
+for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
+  pid=$(basename $(dirname $p)); [ "$pid" = "$$" ] && continue
+  cmd=$(tr '\0' ' ' < $p 2>/dev/null)
+  if [[ "$cmd" == "node server.js"* ]]; then kill $pid 2>/dev/null; fi
+done
+sleep 1
+node -e "const fs=require('fs');const db={meta:{secret:'cs123'},users:[],sessions:[],orders:[],licenses:[],likes:[],comments:[],messages:[],projects:[],transactions:[],withdrawals:[],verifications:[],coupons:[],generatedTemplates:[],categories:[{id:1,slug:'shop',name:'فروشگاهی',icon:'🛒'}],products:[{id:1,slug:'cloud-template',title:'قالب ابری',desc:'از گیت‌هاب اومدم',price:500000,categoryIds:[1],category:'shop',framework:'html',published:true,featured:true,likes:0,downloads:0,screens:[],tags:[],createdAt:'2026-09-01T00:00:00.000Z'}],settings:{siteName:'اپ‌تم',occasions:{},smtp:{host:'',port:587,user:'',pass:'',from:''},payment:{provider:'demo',merchantId:'',sandbox:false}}};fs.writeFileSync('/tmp/mockgh-db.json',JSON.stringify(db,null,1));"
+node /tmp/mockgh.js > /tmp/mockgh.log 2>&1 &
+MOCKPID=$!
+sleep 0.8
+mv data/db.json /tmp/tl-main-db.json 2>/dev/null
+(PORT=3200 DB_SYNC_REPO=test/apptheme-data DB_SYNC_TOKEN=fake DB_SYNC_API=http://localhost:3290 node server.js > /tmp/tl-sync.log 2>&1 &)
+sleep 1.8
+SB="http://localhost:3200"
+ck "sync-pull-boot" "بازیابی شد" "$(grep -a 'db-sync' /tmp/tl-sync.log)"
+ck "sync-pull-product" "قالب ابری" "$(curl -s $SB/templates/cloud-template)"
+ck "sync-home-1product" "اپ‌تم" "$(curl -s $SB/)"
+J2=/tmp/tl-sync-user.txt; rm -f $J2
+SC=$(curl -s -c $J2 $SB/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+ck "sync-register" "/account" "$(curl -s -b $J2 -c $J2 -o /dev/null -w "%{redirect_url}" -X POST $SB/register --data-urlencode "_csrf=$SC" --data-urlencode "name=تست سینک" --data-urlencode "email=cloud$RANDOM@test.ir" --data-urlencode "password=Cloud@1234")"
+sleep 15
+ck "sync-push-done" "ذخیره شد" "$(grep -a 'ذخیره شد' /tmp/tl-sync.log)"
+ck "sync-push-user" "تست سینک" "$(cat /tmp/mockgh-put.json 2>/dev/null)"
+kill $MOCKPID 2>/dev/null
+for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
+  pid=$(basename $(dirname $p)); [ "$pid" = "$$" ] && continue
+  cmd=$(tr '\0' ' ' < $p 2>/dev/null)
+  if [[ "$cmd" == "node server.js"* ]]; then kill $pid 2>/dev/null; fi
+done
+mv /tmp/tl-main-db.json data/db.json 2>/dev/null
+
 echo "──────────────────────────"
 echo "PASS: $PASS | FAIL: $FAIL"
 echo "خطاهای لاگ: $(grep -ac '\[error\]' /tmp/tl-test.log || echo 0)"

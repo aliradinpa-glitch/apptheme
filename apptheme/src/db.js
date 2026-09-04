@@ -10,6 +10,65 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 
 let db = null;
 
+// ═══ سینک ابری دیتابیس (گیت‌هاب) — برای هاست‌های با دیسک موقت مثل Render رایگان ═══
+// متغیرها: DB_SYNC_REPO (مثل myuser/apptheme-data) + DB_SYNC_TOKEN (PAT با دسترسی Contents)
+const SYNC = {
+  api: process.env.DB_SYNC_API || 'https://api.github.com',
+  repo: process.env.DB_SYNC_REPO || '',
+  token: process.env.DB_SYNC_TOKEN || '',
+  path: process.env.DB_SYNC_PATH || 'db.json',
+  branch: process.env.DB_SYNC_BRANCH || 'main',
+};
+const syncReady = () => Boolean(SYNC.repo && SYNC.token && typeof fetch === 'function');
+let pushTimer = null, pushing = false;
+
+function syncHeaders(raw) {
+  return {
+    Authorization: 'Bearer ' + SYNC.token,
+    Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'apptheme-sync',
+  };
+}
+
+// در بوت: اگر دیتابیس محلی نبود (هاست جدید/ری‌استارت)، از گیت‌هاب بکش
+export async function dbSyncInit() {
+  if (!syncReady() || fs.existsSync(DB_FILE)) return;
+  try {
+    const r = await fetch(`${SYNC.api}/repos/${SYNC.repo}/contents/${SYNC.path}?ref=${SYNC.branch}&t=${Date.now()}`, { headers: syncHeaders(true) });
+    if (!r.ok) throw new Error('GET ' + r.status);
+    const txt = await r.text();
+    const parsed = JSON.parse(txt); // اعتبارسنجی
+    if (!parsed || !parsed.meta) throw new Error('فایل ابری معتبر نیست');
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DB_FILE, txt, 'utf8');
+    console.log(`[db-sync] ✓ دیتابیس از گیت‌هاب بازیابی شد (${(txt.length / 1024).toFixed(1)}KB)`);
+  } catch (e) {
+    console.error('[db-sync] بازیابی ناموفق (ادامه با دیتابیس جدید):', e.message);
+  }
+}
+
+async function syncPush() {
+  if (pushing || !db) return;
+  pushing = true;
+  try {
+    const url = `${SYNC.api}/repos/${SYNC.repo}/contents/${SYNC.path}`;
+    let sha = null;
+    const g = await fetch(`${url}?ref=${SYNC.branch}`, { headers: syncHeaders(false) });
+    if (g.ok) sha = (await g.json()).sha;
+    else if (g.status !== 404) throw new Error('GET-sha ' + g.status);
+    const content = fs.readFileSync(DB_FILE).toString('base64');
+    const p = await fetch(url, {
+      method: 'PUT', headers: syncHeaders(false),
+      body: JSON.stringify({ message: 'db auto-backup ' + new Date().toISOString(), content, sha, branch: SYNC.branch }),
+    });
+    if (!p.ok) throw new Error('PUT ' + p.status + ' — ' + (await p.text()).slice(0, 140));
+    console.log('[db-sync] ✓ نسخه جدید دیتابیس در گیت‌هاب ذخیره شد');
+  } catch (e) {
+    console.error('[db-sync] ذخیره ناموفق:', e.message);
+  } finally { pushing = false; }
+}
+
 export function loadDb() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (fs.existsSync(DB_FILE)) {
@@ -34,6 +93,7 @@ export function loadDb() {
 // افزودن فیلدها/کالکشن‌های نسخه‌های جدید به دیتابیس‌های قدیمی
 export function migrate(d) {
   d.meta = d.meta || {};
+  d.categories = d.categories || [];
   if (!d.meta.secret) d.meta.secret = randomToken(24);
   d.messages = d.messages || [];
   d.projects = d.projects || [];
@@ -58,6 +118,10 @@ export function persist() {
   const tmp = DB_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(db, null, 1), 'utf8');
   fs.renameSync(tmp, DB_FILE); // اتمیک
+  if (syncReady()) {
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(syncPush, 12000); // جمع‌کردن نوشتن‌های پشت‌سرهم
+  }
 }
 
 export const getDb = () => db;

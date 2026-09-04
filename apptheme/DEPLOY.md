@@ -42,6 +42,22 @@ node server.js
    - Environment Variable: `SITE_URL=https://yourname.onrender.com`
 4. Deploy! تمام. (پلن رایگان بعد از ۱۵ دقیقه بی‌فعالیتی می‌خوابد؛ اولین بازدید ~۳۰ ثانیه طول می‌کشد)
 
+### ⚠️ حیاتی: دیسک پلن رایگان Render موقت است!
+
+هر ری‌استارت/دیپلوی، کل `data/db.json` (کاربران، سفارش‌ها، لایسنس‌ها، تنظیمات زرین‌پال) را پاک می‌کند.
+راه‌حل داخلی برنامه: **سینک خودکار با ریپوی خصوصی گیت‌هاب** (رایگان):
+
+1. در گیت‌هاب یک ریپوی **خصوصی** خالی بسازید؛ مثلا `apptheme-data`
+2. یک توکن بسازید: Settings → Developer settings → Fine-grained tokens → Generate:
+   - «Repository access» → فقط همان ریپو
+   - «Permissions → Contents» → **Read and write**
+3. در Render → Environment دو متغیر را اضافه کنید:
+   - `DB_SYNC_REPO` = `username/apptheme-data`
+   - `DB_SYNC_TOKEN` = توکن ساخته‌شده
+4. Save → از این پس: در بوت اگر دیتابیس محلی نبود، **خودکار از گیت‌هاب بازیابی** می‌شود؛ و هر تغییری (ثبت‌نام/سفارش/تنظیمات) **خودکار (تا ۱۲ ثانیه بعد) در گیت‌هاب ذخیره** می‌شود. لاگ موفقیت: `[db-sync] ✓`
+
+> تست‌شده: سناریوی کامل بازیابی و ذخیره خودکار در سوئیت تست (بخش ۱۶ — ۱۰۰/۱۰۰).
+
 ## گزینه ۲: Koyeb (رایگان)
 
 New App → GitHub → Buildpack → Run command: `node server.js` → Port `3000`

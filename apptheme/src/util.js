@@ -84,6 +84,7 @@ export function starsSvg(rating = 0, size = 15) {
 // ─── بندانگشتی محصول: ماکاپ مرورگر با پالت رنگی هر قالب ───
 let thumbSeq = 0;
 export function svgThumb(product) {
+  if (!product) return '<div style="aspect-ratio:8/5;border-radius:12px;background:linear-gradient(135deg,#1c2240,#252c52)"></div>';
   const [c1, c2] = product.palette || ['#6d5ef2', '#22d3ee'];
   const accent = product.accent || '#ffffff';
   const id = `tg${++thumbSeq}`;

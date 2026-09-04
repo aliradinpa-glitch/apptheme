@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { PORT, HOST, BODY_LIMIT, SITE_URL } from './src/config.js';
-import { loadDb, getDb, findOne, persist } from './src/db.js';
+import { loadDb, getDb, findOne, persist, dbSyncInit } from './src/db.js';
 import { getSessionUser, anonCsrf, csrfOk } from './src/auth.js';
 import { securityHeaders, rateLimit } from './src/security.js';
 import * as pub from './src/routes/public.js';
@@ -22,6 +22,7 @@ import { createLicenses } from './src/shop.js';
 import { OFFLINE_HTML } from './src/offline.js';
 import * as renderMod from './src/render.js';
 
+await dbSyncInit(); // اگر هاست دیسک موقت دارد، ابتدا از گیت‌هاب بازیابی کن
 loadDb();
 
 // ─── حذف خودکار حساب‌های تأییدنشده (هر ساعت) ───
