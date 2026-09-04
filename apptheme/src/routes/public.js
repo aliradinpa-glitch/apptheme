@@ -108,12 +108,15 @@ export function home(req, res, { user, baseUrl, csrf }) {
 }
 
 // ─── کارت محصول (مشترک) ───
-export function productCard(p, user = null) {
+export function productCard(p, user = null, cartIds = []) {
   const { rating, count } = productRating(p.id);
   const likes = productLikes(p.id);
   const liked = user ? !!findOne('likes', l => l.productId === p.id && l.userId === user.id) : false;
   const off = p.salePrice ? Math.round((1 - p.salePrice / p.price) * 100) : 0;
   const cat = findOne('categories', c => c.id === (p.categoryIds || [])[0]);
+  const inCart = cartIds.includes(p.id);
+  const effP = p.salePrice || p.price;
+  const tier = effP < 500000 ? '<span class="badge ok">اقتصادی</span>' : effP < 1200000 ? '<span class="badge primary">استاندارد</span>' : '<span class="badge warn">حرفه‌ای 👑</span>';
   return `
 <article class="card product-card">
   <div class="thumb">
@@ -131,6 +134,7 @@ export function productCard(p, user = null) {
     <div class="meta">${starsSvg(rating)} ${count ? `<span>(${fa(count)} نظر)</span>` : '<span class="muted">بدون نظر</span>'}</div>
     <div class="price-row">
       <div>
+        ${tier}
         <span class="price">${money(p.salePrice || p.price)}</span>
         ${p.salePrice ? `<del class="muted small">${money(p.price)}</del>` : ''}
       </div>
@@ -139,19 +143,32 @@ export function productCard(p, user = null) {
         <span>${fa(likes)}</span>
       </button>
     </div>
+    <div class="card-buy-row">
+      <button class="btn sm ${inCart ? 'ghost cart-in' : ''}" data-cart-toggle="${p.id}" data-title="${esc(p.title)}">
+        ${inCart ? '✓ در سبد — حذف' : '🛒 افزودن به سبد'}
+      </button>
+      <a class="btn sm soft" href="/checkout?items=${p.id}">خرید سریع ⚡</a>
+    </div>
   </div>
 </article>`;
 }
 
 // ─── فهرست قالب‌ها با فیلتر ───
-export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
+export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] }) {
   let products = findMany('products', p => p.published);
   const q = (query.q || '').trim();
   const cat = query.cat || '';
   const fw = query.fw || '';
   const sort = query.sort || 'new';
+  const tier = query.tier || '';
+  const sale = query.sale === '1';
 
   if (q) products = products.filter(p => (p.title + ' ' + (p.tags || []).join(' ') + ' ' + p.description).includes(q));
+  if (tier) products = products.filter(p => {
+    const eff = p.salePrice || p.price;
+    return tier === 'eco' ? eff < 500000 : tier === 'std' ? (eff >= 500000 && eff < 1200000) : eff >= 1200000;
+  });
+  if (sale) products = products.filter(p => !!p.salePrice);
   if (cat) {
     const c = findOne('categories', x => x.slug === cat);
     if (c) products = products.filter(p => p.categoryIds.includes(c.id));
@@ -194,6 +211,18 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
     <div class="filter-row"><b class="small muted">مرتب‌سازی:</b>
       ${[['new', 'جدیدترین'], ['popular', 'پرفروش‌ترین'], ['cheap', 'ارزان‌ترین'], ['rating', 'بهترین امتیاز']].map(([k, l]) => chip(sort === k, qs({ sort: k, page: null }), l)).join('')}
     </div>
+    <div class="filter-row between">
+      <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:center">
+        <b class="small muted">سطح:</b>
+        ${chip(!tier, qs({ tier: null, page: null }), 'همه')}
+        ${chip(tier === 'eco', qs({ tier: 'eco', page: null }), '🌱 اقتصادی')}
+        ${chip(tier === 'std', qs({ tier: 'std', page: null }), '⚖️ استاندارد')}
+        ${chip(tier === 'pro', qs({ tier: 'pro', page: null }), '👑 حرفه‌ای')}
+        ${chip(sale, qs(Object.assign({ sale: sale ? null : '1' }, { page: null })), '🔥 فقط تخفیف‌دار')}
+      </div>
+      ${(q || cat || fw || tier || sale || sort !== 'new') ? `<a class="btn sm ghost" href="/templates">✕ حذف فیلترها</a>` : ''}
+    </div>
+    <div class="filter-row muted small">🎯 ${fa(products.length)} قالب مطابق فیلترها ${cart.length ? `· 🛒 ${fa(cart.length)} قالب در سبد شما` : ''}</div>
   </div>
   <div id="catalogGrid">
   ${products.length
@@ -208,7 +237,7 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
             `<a class="btn ${i + 1 === cur ? '' : 'ghost'} sm pg-num" href="${qs({ page: i + 1 })}" ${i + 1 === cur ? 'aria-current="page"' : ''}>${fa(i + 1)}</a>`),
           cur < pages ? `<a class="btn ghost sm" href="${qs({ page: cur + 1 })}">← بعدی</a>` : '',
         ].join('')}</div>` : '';
-        return `<div class="grid-products">${slice.map(x => productCard(x, user)).join('')}</div>${pager}`;
+        return `<div class="grid-products">${slice.map(x => productCard(x, user, cart.map(c => c.id))).join('')}</div>${pager}`;
       })()
     : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
   </div>
@@ -517,8 +546,8 @@ export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user =
       ${oc.github}
       ${oc.google}
       ${oc.telegram}
-      <a class="oauth-btn off" href="/forgot?ch=bale" title="نیازمند فعال‌سازی">💬 بله</a>
-      <a class="oauth-btn off" href="/forgot?ch=rubika" title="نیازمند فعال‌سازی">🟣 روبیکا</a>
+      <a class="oauth-btn off" href="/login" data-needs-setup="bale">💬 بله</a>
+      <a class="oauth-btn off" href="/login" data-needs-setup="rubika">🟣 روبیکا</a>
     </div>
     ${!isLogin ? '<div class="alert info" style="margin-top:16px">🎁 هدیه ثبت‌نام: کد تخفیف <b>WELCOME10</b> (۱۰٪ اولین خرید) + تخفیف‌های ویژه اعضا</div>' : ''}` : ''}
   </div>

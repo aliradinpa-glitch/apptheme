@@ -115,6 +115,45 @@
     boot.then(function (d) { window.tlCart.summary = d; updateBadge(d.count); }).catch(function () {});
   })();
 
+
+  // ═══ مودال ورود/ثبت‌نام ═══
+  var authModal = document.getElementById('authModal');
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && authModal && !authModal.hidden) closeAuth(); });
+  function openAuth(tab) {
+    if (!authModal) { location.href = '/' + (tab || 'login'); return; }
+    authModal.hidden = false;
+    requestAnimationFrame(function () { authModal.classList.add('on'); });
+    switchTab(tab || 'login');
+  }
+  function closeAuth() { authModal.classList.remove('on'); setTimeout(function () { authModal.hidden = true; }, 180); }
+  function switchTab(tab) {
+    if (!authModal) return;
+    authModal.querySelectorAll('#authTabs a').forEach(function (a) { a.classList.toggle('on', a.getAttribute('data-tab') === tab); });
+    var f1 = document.getElementById('authFormLogin'), f2 = document.getElementById('authFormReg');
+    if (f1) f1.hidden = tab !== 'login';
+    if (f2) f2.hidden = tab !== 'register';
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-auth]');
+    if (t) { e.preventDefault(); openAuth(t.getAttribute('data-auth')); return; }
+    if (e.target.closest('[data-close-auth]')) { if (authModal) closeAuth(); return; }
+    var tab = e.target.closest('#authTabs a');
+    if (tab && authModal) { e.preventDefault(); switchTab(tab.getAttribute('data-tab')); return; }
+    // راهنمای فعال‌سازی ورود اجتماعی
+    var need = e.target.closest('[data-needs-setup]');
+    if (need) {
+      e.preventDefault();
+      var guides = {
+        github: 'برای فعال‌سازی ورود با گیت‌هاب:\n۱) در github.com/settings/developers یک OAuth App بسازید\n۲) آدرس کال‌بک: آدرس‌سایت/auth/github/callback\n۳) Client ID و Secret را در «ادمین → تنظیمات → ورود اجتماعی» وارد کنید\nفعلاً با ایمیل/موبایل وارد شوید 💡',
+        google: 'برای فعال‌سازی ورود با گوگل (جیمیل):\n۱) در Google Cloud Console → Credentials یک OAuth Client (Web) بسازید\n۲) آدرس کال‌بک: آدرس‌سایت/auth/google/callback\n۳) Client ID و Secret را در «ادمین → تنظیمات → ورود اجتماعی» وارد کنید\nفعلاً با ایمیل/موبایل وارد شوید 💡',
+        telegram: 'برای فعال‌سازی ورود با تلگرام:\n۱) از @BotFather ربات جدید بسازید (/newbot)\n۲) نام‌کاربری و توکن ربات را در «ادمین → تنظیمات → ورود اجتماعی» وارد کنید\nفعلاً با ایمیل/موبایل وارد شوید 💡',
+        bale: 'بله هنوز OAuth استاندارد عمومی ندارد؛ راه جایگزین: ثبت‌نام با ایمیل/موبایل و پیام از داخل حساب به پشتیبانی 💡',
+        rubika: 'روبیکا هنوز OAuth استاندارد عمومی دارد اما نیازمند ثبت‌نام توسعه‌دهنده در پنل روبیکاست؛ فعلاً با ایمیل/موبایل وارد شوید 💡'
+      };
+      window.tlAlert((guides[need.getAttribute('data-needs-setup')] || 'این روش هنوز فعال نشده؛ فعلاً با ایمیل/موبایل وارد شوید.').replace(/\\n/g, '<br>'));
+    }
+  });
+
   // دکمه سبد در هدر → drawer
   document.addEventListener('click', function (e) {
     var cb = e.target.closest('#cartBtn');

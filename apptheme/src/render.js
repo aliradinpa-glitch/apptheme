@@ -1,7 +1,7 @@
 // ─── رندر سمت سرور (SSR) + سئو ───
 import { esc } from './util.js';
 import { APP_NAME } from './config.js';
-import { findMany } from './db.js';
+import { findMany, getDb } from './db.js';
 
 const BASE_CSS = '<link rel="stylesheet" href="/assets/css/app.css">';
 
@@ -62,8 +62,8 @@ function navbar(user, active = '') {
   const authArea = user
     ? `<a class="btn sm ghost" href="/account">حساب من</a>
        ${user.role === 'admin' ? '<a class="btn sm soft" href="/admin">پنل مدیریت</a>' : ''}`
-    : `<a class="btn sm ghost" href="/login">ورود</a>
-       <a class="btn sm" href="/register">ثبت‌نام</a>`;
+    : `<a class="btn sm ghost" href="/login" data-auth="login">ورود</a>
+       <a class="btn sm" href="/register" data-auth="register">ثبت‌نام</a>`;
   return `
 <header class="navbar">
   <div class="container inner">
@@ -154,8 +154,52 @@ function verifyBanner(user, csrf) {
 // ─── صفحه فروشگاه ───
 export function page(opts) {
   const { user, active = '' } = opts;
-  const body = navbar(user, active) + verifyBanner(user, opts.csrf) + `<main>${opts.body}</main>` + footer();
+  const body = navbar(user, active) + verifyBanner(user, opts.csrf) + `<main>${opts.body}</main>` + footer() + (user ? '' : authModalHtml(opts.csrf));
   return baseHtml({ ...opts, body, csrf: opts.csrf });
+}
+
+// ═══ مودال ورود/ثبت‌نام (روی هر صفحه، بدون رفت‌وبرگشت) ═══
+function authModalHtml(csrf) {
+  const o = (getDb().settings.oauth) || {};
+  const gh = o.githubId && o.githubSecret, gg = o.googleId && o.googleSecret, tg = o.telegramBot && o.telegramToken;
+  const ob = (on, href, label, setupKey) => on
+    ? `<a class="oauth-btn" href="${href}">${label}</a>`
+    : `<a class="oauth-btn off" href="/login" data-needs-setup="${setupKey}">${label}</a>`;
+  return `
+<div id="authModal" class="tl-wrap" hidden>
+  <div class="tl-ov" data-close-auth></div>
+  <div class="tl-box auth-box">
+    <button class="auth-x" type="button" data-close-auth aria-label="بستن">×</button>
+    <div class="logo" style="margin-bottom:8px"><span class="mark">پ</span>اپ‌تم</div>
+    <div class="auth-tabs" id="authTabs">
+      <a href="/login" class="on" data-tab="login">ورود</a>
+      <a href="/register" data-tab="register">ثبت‌نام</a>
+    </div>
+    <form method="post" action="/login" id="authFormLogin" class="auth-f">
+      <input type="hidden" name="_csrf" value="${esc(csrf)}">
+      <input class="input" name="identifier" required dir="ltr" placeholder="ایمیل یا شماره موبایل" autocomplete="username">
+      <input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="رمز عبور" autocomplete="current-password">
+      <button class="btn lg" type="submit">ورود به حساب</button>
+      <a class="small" href="/forgot" style="color:var(--primary)">فراموشی رمز عبور؟ 🔑</a>
+    </form>
+    <form method="post" action="/register" id="authFormReg" class="auth-f" hidden>
+      <input type="hidden" name="_csrf" value="${esc(csrf)}">
+      <input class="input" name="name" required minlength="2" placeholder="نام و نام خانوادگی" autocomplete="name">
+      <input class="input" name="identifier" required dir="ltr" placeholder="ایمیل (جیمیل) یا موبایل" autocomplete="username">
+      <input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="رمز عبور (حداقل ۸ کاراکتر)" autocomplete="new-password">
+      <button class="btn lg" type="submit">ساخت حساب + هدیه WELCOME10 🎁</button>
+    </form>
+    <div class="oauth-sep"><span>یا ورود سریع با</span></div>
+    <div class="oauth-row">
+      ${ob(gh, '/auth/github', '🐙 گیت‌هاب', 'github')}
+      ${ob(gg, '/auth/google', '🔴 گوگل (جیمیل)', 'google')}
+      ${ob(tg, '/auth/telegram', '✈️ تلگرام', 'telegram')}
+      <a class="oauth-btn off" href="/login" data-needs-setup="bale">💬 بله</a>
+      <a class="oauth-btn off" href="/login" data-needs-setup="rubika">🟣 روبیکا</a>
+    </div>
+    <p class="hint" style="margin-top:10px">با ورود/ثبت‌نام، <a href="/terms" style="color:var(--primary)">قوانین</a> را می‌پذیرید.</p>
+  </div>
+</div>`;
 }
 
 // ─── پوسته ادمین ───

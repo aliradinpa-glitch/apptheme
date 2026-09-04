@@ -35,24 +35,24 @@ ck "apps" "ویزارد" "$(curl -s $B/apps)"
 ck "sitemap" "/apps" "$(curl -s $B/sitemap.xml)"
 
 # ─── ۲. نصب و ورود ادمین ───
-C=$(curl -s -c $JAR $B/setup | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c $JAR $B/setup | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 r=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/setup --data-urlencode "_csrf=$C" --data-urlencode "name=مدیر اپ‌تم" --data-urlencode "email=admin@apptheme.ir" --data-urlencode "password=Admin@1403")
 ck "setup-admin" "/admin" "$r"
 rm -f $JAR
-C=$(curl -s -c $JAR $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c $JAR $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 r=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=admin@apptheme.ir" --data-urlencode "password=Admin@1403")
 ck "login-admin" "/admin" "$r"
-MA=$(curl -s -b $JAR $B/admin | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+MA=$(curl -s -b $JAR $B/admin | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "dashboard-submitted" "اپ در انتظار تایید" "$(curl -s -b $JAR $B/admin)"
 
 # ─── ۳. ثبت‌نام موبایل + ایمیل ───
 LJ=/tmp/tl-user.txt; rm -f $LJ
-C=$(curl -s -c $LJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c $LJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 r=$(curl -s -b $LJ -c $LJ -o /dev/null -w "%{redirect_url}" -X POST $B/register --data-urlencode "_csrf=$C" --data-urlencode "name=کاربر تست" --data-urlencode "identifier=09121234567" --data-urlencode "password=test12345")
 ck "register-mobile" "welcome=1" "$r"
-M=$(curl -s -b $LJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+M=$(curl -s -b $LJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 EJ=/tmp/tl-email.txt; rm -f $EJ
-C=$(curl -s -c $EJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c $EJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 curl -s -b $EJ -c $EJ -o /dev/null -X POST $B/register --data-urlencode "_csrf=$C" --data-urlencode "name=ایمیل تست" --data-urlencode "identifier=test@gmail.com" --data-urlencode "password=test12345"
 VTOKEN=$(grep -aoE 'verify-email\?token=[a-f0-9]{32}' /tmp/tl-test.log | tail -1 | cut -d= -f2)
 r=$(curl -s -b $EJ -c $EJ -o /dev/null -w "%{redirect_url}" "$B/verify-email?token=$VTOKEN")
@@ -177,7 +177,7 @@ R=$(curl -s -b $JAR -c $JAR -X POST $B/admin/restore -H "Content-Type: applicati
 ck "restore-ok" '"ok":true' "$R"
 ck "restore-applied" "اپ‌تم-بازيابي-شده" "$(curl -s -b $JAR $B/admin/settings)"
 # بازیابی فایل خراب
-MA=$(curl -s -b $JAR $B/admin | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+MA=$(curl -s -b $JAR $B/admin | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 R=$(curl -s -b $JAR -X POST $B/admin/restore -H "Content-Type: application/json" -H "X-CSRF: $MA" -d '{"hello":1}')
 ck "restore-bad-file" '"ok":false' "$R"
 # حجم سبک قالب‌ساز
@@ -214,9 +214,9 @@ ck "gen-bad-prompt" '"ok":false' "$(curl -s -b $JAR -X POST $B/admin/generator/g
 # ─── ۱۳. درگاه زرین‌پال ───
 # (بازیابی پشتیبان نشست‌ها را ریست کرد — ورود دوباره کاربر)
 rm -f $LJ
-C=$(curl -s -c $LJ $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c $LJ $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 curl -s -b $LJ -c $LJ -o /dev/null -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=09121234567" --data-urlencode "password=test12345"
-M=$(curl -s -b $LJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+M=$(curl -s -b $LJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 # ساختار درخواست (واحد پول: تومان → ریال ×۱۰)
 BTEST=$(node -e "
 import('./src/gateway.js').then(m => {
@@ -245,7 +245,7 @@ ck "gw-demo-restored" "درگاه پرداخت امن" "$(curl -s -b $LJ $B/paym
 # ─── ۱۴. پاک‌سازی داده‌های دمو ───
 R=$(curl -s -b $JAR -X POST $B/admin/purge-demo -H "X-CSRF: $MA")
 ck "purge-ok" '"ok":true' "$R"
-C=$(curl -s -c /tmp/pp.txt $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+C=$(curl -s -c /tmp/pp.txt $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "purge-sara-gone" "اشتباه است" "$(curl -s -b /tmp/pp.txt -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=sara@demo.ir" --data-urlencode "password=demo12345")"
 ck "purge-products-kept" "قالب جدید" "$(curl -s -b $JAR $B/admin/products)"
 ck "purge-admin-kept" "داشبورد" "$(curl -s -b $JAR $B/admin)"
@@ -255,7 +255,7 @@ ck "parse-money-unit" "20000000" "$(node -e "import('./src/util.js').then(m=>con
 ck "parse-money-fa" "20000000" "$(node -e "import('./src/util.js').then(m=>console.log(m.parseMoney('۲۰ میلیون')))")"
 ck "parse-money-dots" "3500000" "$(node -e "import('./src/util.js').then(m=>console.log(m.parseMoney('3.500.000')))")"
 # قیمت‌گذاری با ویرگول — باید موفق شود (روی سفارش تازه)
-CSRW=$(curl -s -b $LJ -c $LJ $B/apps/wizard | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+CSRW=$(curl -s -b $LJ -c $LJ $B/apps/wizard | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 curl -s -b $LJ -o /dev/null -X POST $B/apps/order --data-urlencode "_csrf=$CSRW" --data-urlencode "type=shop" --data-urlencode "name=تست ویرگول" --data-urlencode "desc=یه اپ تستی برای قیمت‌گذاری با ویرگول" --data-urlencode "feat=ورود" --data-urlencode "contact=09121110000"
 APID3=$(curl -s -b $JAR $B/admin/app-projects | grep -o 'app-projects/[0-9]*' | sort -t/ -k2 -n | tail -1 | grep -o '[0-9]*')
 R=$(curl -s -b $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/admin/app-projects/$APID3/quote --data-urlencode "_csrf=$MA" --data-urlencode "price=12,000,000 تومان" --data-urlencode "note=تست ویرگول")
@@ -289,21 +289,38 @@ ck "cart-remove" "" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X P
 ck "cart-badge-count" "count" "$(curl -s -b $GJ $B/cart/summary)"
 FJ=/tmp/tl-forgot.txt; rm -f $FJ
 curl -s -c $FJ -o /dev/null $B/
-CRF=$(curl -s -b $FJ -c $FJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+CRF=$(curl -s -b $FJ -c $FJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 curl -s -b $FJ -c $FJ -o /dev/null -X POST $B/register --data-urlencode "_csrf=$CRF" --data-urlencode "name=کاربر فراموشکار" --data-urlencode "identifier=forgetful@test.ir" --data-urlencode "password=OldPass@1234"
-CF=$(curl -s -b $FJ -c $FJ $B/forgot | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+CF=$(curl -s -b $FJ -c $FJ $B/forgot | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "forgot-email-ok" "sent=1" "$(curl -s -b $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/forgot --data-urlencode "_csrf=$CF" --data-urlencode "ch=email" --data-urlencode "identifier=forgetful@test.ir")"
 ck "forgot-telegram-ticket" "sent=1" "$(curl -s -b $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/forgot --data-urlencode "_csrf=$CF" --data-urlencode "ch=telegram" --data-urlencode "identifier=@tester")"
 RT=$(grep -a "reset-password?token=" /tmp/tl-test.log | grep -o 'token=[a-f0-9]*' | tail -1 | cut -d= -f2)
 ck "forgot-token-issued" "yes" "$([ -n "$RT" ] && echo yes)"
-CF2=$(curl -s -b $FJ -c $FJ "$B/reset-password?token=$RT" | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+CF2=$(curl -s -b $FJ -c $FJ "$B/reset-password?token=$RT" | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "reset-newpass-login" "/account" "$(curl -s -b $FJ -c $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/reset-password --data-urlencode "_csrf=$CF2" --data-urlencode "token=$RT" --data-urlencode "password=NewPass@123")"
 ck "oauth-off-guard" "err=oauth" "$(curl -s -o /dev/null -w "%{redirect_url}" $B/auth/github)"
 ck "login-page-tabs" "auth-tabs" "$(curl -s $B/login)"
 ck "login-page-oauth-buttons" "oauth-btn" "$(curl -s $B/login)"
 ck "catalog-chips" "chip-on" "$(curl -s $B/templates)"
 
-# ─── ۱۸. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
+# ─── ۱۸. کارت‌های خرید + فیلتر حرفه‌ای + مودال ورود ───
+ck "card-buy-btn" "افزودن به سبد" "$(curl -s $B/templates)"
+ck "card-quick-buy" "خرید سریع" "$(curl -s $B/templates)"
+ck "card-tier-eco" "اقتصادی" "$(curl -s "$B/templates?tier=eco")"
+ck "card-tier-pro" "حرفه‌ای" "$(curl -s "$B/templates?tier=pro")"
+ck "filter-sale" "تخفیف" "$(curl -s "$B/templates?sale=1")"
+ck "filter-clear-btn" "حذف فیلترها" "$(curl -s "$B/templates?tier=eco")"
+GJ2=/tmp/tl-card.txt; rm -f $GJ2
+curl -s -c $GJ2 -o /dev/null $B/
+curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/add -d "productId=1"
+ck "card-in-cart-state" "در سبد — حذف" "$(curl -s -b $GJ2 $B/templates)"
+curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/remove -d "productId=1"
+ck "card-removed-state" "افزودن به سبد" "$(curl -s -b $GJ2 $B/templates)"
+ck "auth-modal-onpage" "authModal" "$(curl -s $B/)"
+ck "auth-modal-tabs" "authTabs" "$(curl -s $B/)"
+ck "auth-modal-needs-setup" "data-needs-setup" "$(curl -s $B/)"
+
+# ─── ۱۹. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
 for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
   pid=$(basename $(dirname $p)); [ "$pid" = "$$" ] && continue
   cmd=$(tr '\0' ' ' < $p 2>/dev/null)
@@ -346,7 +363,7 @@ ck "sync-pull-boot" "بازیابی شد" "$(grep -a 'db-sync' /tmp/tl-sync.log)
 ck "sync-pull-product" "قالب ابری" "$(curl -s $SB/templates/cloud-template)"
 ck "sync-home-1product" "اپ‌تم" "$(curl -s $SB/)"
 J2=/tmp/tl-sync-user.txt; rm -f $J2
-SC=$(curl -s -c $J2 $SB/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+SC=$(curl -s -c $J2 $SB/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "sync-register" "/account" "$(curl -s -b $J2 -c $J2 -o /dev/null -w "%{redirect_url}" -X POST $SB/register --data-urlencode "_csrf=$SC" --data-urlencode "name=تست سینک" --data-urlencode "email=cloud$RANDOM@test.ir" --data-urlencode "password=Cloud@1234")"
 sleep 15
 ck "sync-push-done" "ذخیره شد" "$(grep -a 'ذخیره شد' /tmp/tl-sync.log)"

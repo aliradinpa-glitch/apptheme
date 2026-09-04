@@ -400,3 +400,15 @@ body{background-image:radial-gradient(1200px 500px at 85% -10%, color-mix(in srg
 .oauth-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px)}
 .oauth-btn.off{opacity:.55;cursor:not-allowed}
 .oauth-btn.chip-on{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-color:transparent}
+
+/* ═══ ردیف خرید کارت محصول ═══ */
+.card-buy-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px;align-items:center}
+.card-buy-row .btn{white-space:nowrap}
+.card-buy-row .cart-in{border-color:color-mix(in srgb,var(--ok) 45%,var(--border));color:var(--ok)}
+
+/* ═══ مودال احراز هویت ═══ */
+#authModal .auth-box{max-width:400px;padding:26px 22px 20px;text-align:right;max-height:92vh;overflow:auto}
+#authModal .auth-x{position:absolute;top:10px;inset-inline-end:14px;border:0;background:none;font-size:1.5rem;cursor:pointer;color:inherit;opacity:.6}
+#authModal .auth-f{display:grid;gap:10px;margin-top:14px}
+#authModal .logo{justify-content:center;display:flex}
+#authModal[hidden]{display:none!important}
