@@ -1,6 +1,6 @@
 {
   "name": "apptheme",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "اپتم — فروشگاه قالبهای حرفهای وب | پوسته نئون ریفت 2.0",
   "type": "module",
   "main": "server.js",

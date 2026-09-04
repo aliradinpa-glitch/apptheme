@@ -305,7 +305,8 @@ const server = http.createServer(async (req, res) => {
       if ((m = pathname.match(/^\/admin\/app-projects\/(\d+)\/preview$/))) return handle(admin.handleProjectPreview(req, res, ctx, parseInt(m[1], 10)));
       if (pathname === '/admin/settings/save') return handle(admin.handleSettingsSave(req, res, ctx));
 
-      // ═══ سبد سروری (حتی بدون جاوااسکریپت) ═══
+      // ═══ سبد سروری (حتی بدون جاوااسکریپت) — با محافظ CSRF ═══
+      if (pathname.startsWith('/cart/') && !csrfOk(req, csrf, body)) return finish(403, 'درخواست نامعتبر (CSRF)');
       const cartJsonRes = items => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(cartJson(items))); };
       if (pathname === '/cart/add') {
         const items = cartAdd(cart, body.productId ?? body.id, body.qty);
@@ -333,6 +334,11 @@ const server = http.createServer(async (req, res) => {
         for (const it of (Array.isArray(body.items) ? body.items : [])) items = cartAdd(items, it.id, it.qty ? it.qty - 1 : 0);
         writeCart(res, items);
         return cartJsonRes(items);
+      }
+      if (pathname === '/cart/clear') {
+        writeCart(res, []);
+        if ((req.headers.accept || '').includes('application/json') || body.json) return cartJsonRes([]);
+        return redirect(res, '/cart');
       }
 
       return finish(404, notFoundPage());

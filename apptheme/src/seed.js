@@ -7,6 +7,8 @@ const day = 86400000;
 const iso = (offsetDay = 0, h = 12) => new Date(now - offsetDay * day + h * 3600000).toISOString();
 
 export function seedDb() {
+  // حساب مدیر پیش‌فرض ساخته می‌شود؛ برای افزایش امنیت بعد از اولین ورود رمز را عوض کنید.
+  console.log('👤 حساب مدیر پیش‌فرض فعال شد: admin@apptheme.ir / Admin@1403 (فقط برای دمو — رمز را عوض کنید)');
   const categories = [
     { id: 1, name: 'فروشگاهی',   slug: 'shop',       icon: '🛍️', description: 'قالب‌های فروشگاه اینترنتی و ووکامرس', createdAt: iso(60) },
     { id: 2, name: 'شرکتی',      slug: 'corporate',  icon: '🏢', description: 'قالب‌های معرفی شرکت و سازمان', createdAt: iso(60) },
@@ -95,6 +97,9 @@ export function seedDb() {
     { id: 1, name: 'سارا محمدی', email: 'sara@demo.ir', mobile: '09121112233', passwordHash: hashPassword('demo12345'), role: 'customer', active: true, verified: true, createdAt: iso(30) },
     { id: 2, name: 'امیر رضایی', email: 'amir@demo.ir', mobile: '09124445566', passwordHash: hashPassword('demo12345'), role: 'customer', active: true, verified: true, createdAt: iso(18) },
     { id: 3, name: 'نگار کریمی', email: 'negar@demo.ir', mobile: '09127778899', passwordHash: hashPassword('demo12345'), role: 'customer', active: true, verified: true, wallet: 350000, sheba: '', createdAt: iso(6) },
+    // ── حساب مدیر پیش‌فرض (فقط برای نصب/دمو) ──
+    // ⚠️ بعد از اولین ورود، حتماً رمز آن را از پنل ادمین (تنظیمات امنیتی) عوض کنید.
+    { id: 4, name: 'مدیر اپ‌تم', email: 'admin@apptheme.ir', mobile: '', passwordHash: hashPassword('Admin@1403'), role: 'admin', active: true, verified: true, createdAt: iso(30) },
   ];
 
   const orders = [

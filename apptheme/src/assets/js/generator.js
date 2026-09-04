@@ -24,7 +24,7 @@
     var secs = { menu: 'منو/آیتم‌ها', gallery: 'گالری', team: 'تیم', pricing: 'قیمت‌گذاری', testimonials: 'نظرات', blog: 'وبلاگ', hours: 'ساعات کاری', map: 'نقشه', faq: 'سوالات متداول' };
     specBox.innerHTML =
       '<div class="alert ok notif-ok" style="margin-top:6px">' +
-      '<b>' + s.brand + '</b> — ' + s.typeLabel + ' · ' + (s.dark ? '🌙 تیره' : '☀️ روشن') +
+      '<b>' + s.brand + '</b> — ' + s.typeLabel + ' · ' + (s.modeLabel ? '🎨 ' + s.modeLabel + ' · ' : '') + (s.dark ? '🌙 تیره' : '☀️ روشن') +
       '<span class="pal-dots">' + s.palette.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '</span>' +
       '<div class="small" style="margin-top:6px">' + s.sections.map(function (k) { return '✓ ' + (secs[k] || k); }).join(' · ') + '</div></div>';
   }

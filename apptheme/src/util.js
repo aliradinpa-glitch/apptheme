@@ -101,8 +101,8 @@ export function starsSvg(rating = 0, size = 15) {
 // لایوت بر اساس شناسه محصول ثابت انتخاب می‌شود (پایدار در همه صفحات)
 let thumbSeq = 0;
 function thumbVariant(seed) {
-  const n = Number(seed) || 0;
-  return n % 4;
+  const n = (Number(seed) || 0) * 2654435761 >>> 0;
+  return n % 6;
 }
 export function svgThumb(product) {
   if (!product) return '<div style="aspect-ratio:8/5;border-radius:12px;background:linear-gradient(135deg,#1c2240,#252c52)"></div>';
@@ -202,5 +202,39 @@ export function svgThumb(product) {
   <rect x="502" y="306" width="206" height="14" rx="7" fill="rgba(255,255,255,.55)"/><rect x="502" y="330" width="160" height="14" rx="7" fill="rgba(255,255,255,.35)"/>
   <rect x="502" y="360" width="206" height="30" rx="15" fill="${k2}" opacity=".9"/>
   <rect x="120" y="430" width="90" height="12" rx="6" fill="rgba(255,255,255,.4)"/><rect x="230" y="430" width="70" height="12" rx="6" fill="rgba(255,255,255,.28)"/><rect x="320" y="430" width="80" height="12" rx="6" fill="rgba(255,255,255,.28)"/>
+</svg>`;
+
+  // ── V4: داشبورد تحلیلی تیره با نمودار ──
+  if (v === 4) return `<svg class="thumb-svg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(product.title)}">${defs}${bg}
+  <rect x="0" y="0" width="800" height="500" fill="#0c1027" opacity=".55"/>
+  <rect x="40" y="36" width="130" height="34" rx="12" fill="rgba(255,255,255,.1)"/><circle cx="62" cy="53" r="9" fill="${k1}"/>
+  <rect x="600" y="36" width="160" height="34" rx="17" fill="rgba(255,255,255,.14)"/><circle cx="624" cy="53" r="8" fill="${ka}"/>
+  <rect x="40" y="96" width="720" height="180" rx="18" fill="rgba(255,255,255,.08)"/>
+  <polyline points="70,240 140,200 210,222 280,160 350,190 420,120 490,150 560,104 630,132 700,110 730,120" fill="none" stroke="${k1}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="70,250 140,228 210,240 280,210 350,226 420,190 490,210 560,170 630,196 700,168 730,176" fill="none" stroke="${k2}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+  <circle cx="420" cy="120" r="7" fill="${ka}"/><circle cx="560" cy="104" r="7" fill="#fff"/>
+  <rect x="40" y="300" width="230" height="150" rx="16" fill="rgba(255,255,255,.09)"/>
+  <rect x="64" y="326" width="90" height="14" rx="7" fill="rgba(255,255,255,.5)"/><rect x="64" y="352" width="150" height="28" rx="12" fill="${k1}" opacity=".9"/>
+  <rect x="64" y="400" width="120" height="10" rx="5" fill="rgba(255,255,255,.3)"/>
+  <rect x="285" y="300" width="230" height="150" rx="16" fill="rgba(255,255,255,.09)"/>
+  <rect x="309" y="326" width="90" height="14" rx="7" fill="rgba(255,255,255,.5)"/><rect x="309" y="352" width="150" height="28" rx="12" fill="${k2}" opacity=".9"/>
+  <rect x="309" y="400" width="120" height="10" rx="5" fill="rgba(255,255,255,.3)"/>
+  <rect x="530" y="300" width="230" height="150" rx="16" fill="rgba(255,255,255,.09)"/>
+  <rect x="554" y="326" width="90" height="14" rx="7" fill="rgba(255,255,255,.5)"/><rect x="554" y="352" width="150" height="28" rx="12" fill="${ka}" opacity=".85"/>
+  <rect x="554" y="400" width="120" height="10" rx="5" fill="rgba(255,255,255,.3)"/>
+</svg>`;
+
+  // ── V5: کارت‌های شیشه‌ای مینیمال ──
+  const v5c = [k1, k2, ka];
+  return `<svg class="thumb-svg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(product.title)}">${defs}${bg}
+  <circle cx="120" cy="80" r="130" fill="rgba(255,255,255,.14)"/><circle cx="700" cy="430" r="150" fill="rgba(255,255,255,.1)"/>
+  <rect x="70" y="70" width="130" height="20" rx="10" fill="rgba(255,255,255,.85)"/><rect x="70" y="100" width="90" height="12" rx="6" fill="rgba(255,255,255,.5)"/>
+  ${v5c.map((c, i) => `<rect x="${70 + i * 230}" y="150" width="200" height="290" rx="24" fill="rgba(255,255,255,.16)" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+  <rect x="${94 + i * 230}" y="178" width="52" height="52" rx="16" fill="${c}" opacity=".95"/>
+  <rect x="${94 + i * 230}" y="252" width="120" height="16" rx="8" fill="rgba(255,255,255,.85)"/>
+  <rect x="${94 + i * 230}" y="282" width="150" height="9" rx="4" fill="rgba(255,255,255,.45)"/>
+  <rect x="${94 + i * 230}" y="298" width="130" height="9" rx="4" fill="rgba(255,255,255,.35)"/>
+  <rect x="${94 + i * 230}" y="360" width="152" height="40" rx="20" fill="${c}" opacity=".85"/>
+  <rect x="${118 + i * 230}" y="376" width="104" height="10" rx="5" fill="rgba(12,16,39,.75)"/>`).join('')}
 </svg>`;
 }

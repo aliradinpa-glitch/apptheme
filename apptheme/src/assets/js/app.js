@@ -79,9 +79,10 @@
 
   // ═══ سبد خرید سروری (کوکی) ═══
   function api(method, url, body) {
+    var csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
     return fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF': csrf },
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) { return r.json(); });
   }
@@ -102,6 +103,8 @@
     '.cart-drawer footer{padding:16px 20px;border-top:1px solid var(--border,#283163);display:grid;gap:10px;background:color-mix(in srgb,var(--surface-2,#1a2250) 55%,transparent)}',
     '.cart-drawer .cd-total{display:flex;justify-content:space-between;font-weight:800;font-size:1rem}',
     '.cd-x{border:0;background:none;font-size:1.4rem;cursor:pointer;color:inherit;opacity:.6;transition:.2s;line-height:1}',
+    '.cd-rm{flex-shrink:0;width:30px;height:30px;border-radius:9px;border:1px solid rgba(251,113,133,.3);background:rgba(251,113,133,.1);color:#fb7185;font-size:.85rem;cursor:pointer;transition:.18s;line-height:1}',
+    '.cd-rm:hover{background:#fb7185;color:#fff;box-shadow:0 6px 16px rgba(251,113,133,.35);transform:rotate(90deg)}',
     '.cd-x:hover{opacity:1;color:#fb7185;transform:rotate(90deg)}',
     '[dir="rtl"] .cart-drawer{inset-inline-start:auto;inset-inline-end:0;transform:translateX(-115%)}',
     '[dir="rtl"] .cart-drawer.on{transform:none}'
@@ -143,7 +146,7 @@
     var dr = ensureDrawer();
     var box = dr.querySelector('.cd-items');
     box.innerHTML = (d.items || []).map(function (it) {
-      return '<div class="cd-it"><div><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b></div>';
+      return '<div class="cd-it"><div class="grow"><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b><button class="cd-rm" type="button" data-drawer-remove="' + it.id + '" aria-label="حذف ' + it.title + '" title="حذف از سبد">✕</button></div>';
     }).join('') || '<p class="muted" style="text-align:center;padding:24px">سبد خرید شما خالی است 🛒</p>';
     dr.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
     dr.querySelector('footer a.btn').href = d.items && d.items.length ? '/checkout?items=' + d.items.map(function (x) { return x.id; }).join(',') : '/cart';
@@ -166,29 +169,83 @@
     boot.then(function (d) { window.tlCart.summary = d; updateBadge(d.count); }).catch(function () {});
   })();
 
-  // ═══ مودال ورود/ثبت‌نام ═══
+  // ═══ مودال ورود/ثبت‌نام/بازیابی رمز (سه وضعیت در یک مودال) ═══
   var authModal = document.getElementById('authModal');
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && authModal && !authModal.hidden) closeAuth(); });
-  function openAuth(tab) {
-    if (!authModal) { location.href = '/' + (tab || 'login'); return; }
+  function openAuth(view) {
+    if (!authModal) { location.href = '/' + (view || 'login'); return; }
+    var forgotBox = document.getElementById('forgotDone');
+    if (forgotBox) forgotBox.classList.add('hide');
     authModal.hidden = false;
     requestAnimationFrame(function () { authModal.classList.add('on'); });
-    switchTab(tab || 'login');
+    switchView(view || 'login');
+    document.body.style.overflow = 'hidden';
   }
-  function closeAuth() { authModal.classList.remove('on'); setTimeout(function () { authModal.hidden = true; }, 200); }
-  function switchTab(tab) {
+  function closeAuth() {
+    authModal.classList.remove('on');
+    setTimeout(function () { authModal.hidden = true; document.body.style.overflow = ''; }, 220);
+  }
+  function switchView(view) {
     if (!authModal) return;
-    authModal.querySelectorAll('#authTabs a').forEach(function (a) { a.classList.toggle('on', a.getAttribute('data-tab') === tab); });
-    var f1 = document.getElementById('authFormLogin'), f2 = document.getElementById('authFormReg');
-    if (f1) f1.hidden = tab !== 'login';
-    if (f2) f2.hidden = tab !== 'register';
+    authModal.querySelectorAll('.auth-view').forEach(function (v) { v.classList.toggle('on', v.getAttribute('data-view') === view); });
+    var sw = document.getElementById('authSwitchTxt'), swr = document.getElementById('authSwitchTxtR');
+    if (sw) sw.classList.toggle('hide', view === 'login');
+    if (swr) swr.classList.toggle('hide', view !== 'login');
   }
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-auth]');
     if (t) { e.preventDefault(); openAuth(t.getAttribute('data-auth')); return; }
     if (e.target.closest('[data-close-auth]')) { if (authModal) closeAuth(); return; }
-    var tab = e.target.closest('#authTabs a');
-    if (tab && authModal) { e.preventDefault(); switchTab(tab.getAttribute('data-tab')); return; }
+    var ov = e.target.closest('[data-open-view]');
+    if (ov && authModal) { e.preventDefault(); switchView(ov.getAttribute('data-open-view')); return; }
+    // نمایش/مخفی رمز عبور
+    var eye = e.target.closest('[data-eye]');
+    if (eye) {
+      var inp = document.getElementById(eye.getAttribute('data-eye'));
+      if (inp) {
+        var isPass = inp.type === 'password';
+        inp.type = isPass ? 'text' : 'password';
+        eye.textContent = isPass ? '🙈' : '👁';
+      }
+    }
+
+    // ── قدرت رمز عبور (نوار ۴ قسمتی) ──
+    var regPass = document.getElementById('regPass');
+    if (regPass && !regPass.dataset.bound) {
+      regPass.dataset.bound = '1';
+      regPass.addEventListener('input', function () {
+        var box = document.getElementById('passStrength');
+        if (!box) return;
+        var v = regPass.value || '';
+        var score = 0;
+        if (v.length >= 8) score++;
+        if (v.length >= 12) score++;
+        if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+        if (/[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
+        box.className = 'af-strength' + (v ? ' s' + score : '');
+      });
+    }
+
+    // ── بازیابی رمز بدون رفرش (در مودال) ──
+    var forgotForm = document.getElementById('authFormForgot');
+    if (forgotForm && !forgotForm.dataset.bound) {
+      forgotForm.dataset.bound = '1';
+      forgotForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var btn = forgotForm.querySelector('button[type=submit]');
+        var idf = forgotForm.querySelector('[name=identifier]');
+        if (!idf || !idf.value.trim()) { window.tlToast('ایمیل را وارد کن', 'err', { title: 'بازیابی رمز' }); return; }
+        btn.disabled = true; btn.textContent = '… در حال ارسال';
+        var fd = new FormData(forgotForm);
+        fetch('/forgot', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'fetch' } })
+          .then(function () {
+            forgotForm.classList.add('hide');
+            document.getElementById('forgotDone').classList.remove('hide');
+          })
+          .catch(function () { window.tlToast('خطای شبکه؛ دوباره تلاش کن', 'err', { title: 'بازیابی رمز' }); })
+          .finally(function () { btn.disabled = false; btn.textContent = 'ارسال لینک بازنشانی ✉️'; });
+      });
+    }
     // راهنمای فعال‌سازی ورود اجتماعی
     var need = e.target.closest('[data-needs-setup]');
     if (need) {
@@ -212,6 +269,34 @@
       window.tlCart.refresh().then(openDrawer).catch(function () { location.href = '/cart'; });
     }
   });
+
+  // ── حذف آیتم از کشوی سبد (با تأیید + بازگردانی) ──
+  document.addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-drawer-remove]');
+    if (!rm) return;
+    e.preventDefault();
+    var id = rm.getAttribute('data-drawer-remove');
+    window.tlConfirm('این قالب از سبد حذف شود؟', { okText: 'بله، حذف کن', danger: true, icon: '🗑', title: 'حذف از سبد' })
+      .then(function (ok) {
+        if (!ok) return;
+        return window.tlCart.remove(id).then(function () {
+          if (window.tlCart.summary) openDrawerSilent(window.tlCart.summary);
+          window.tlToast('قالب از سبد حذف شد', 'warn', {
+            title: 'حذف شد',
+            duration: 6000,
+            action: { label: '↩ بازگردانی', fn: function () { window.tlCart.add(id, true).then(function (d) { openDrawerSilent(d); }); } },
+          });
+        });
+      });
+  });
+  function openDrawerSilent(d) {
+    if (!drawerEl || !drawerEl.classList.contains('on')) return; // فقط اگر کشو باز است رفرش کن
+    var box = drawerEl.querySelector('.cd-items');
+    box.innerHTML = (d.items || []).map(function (it) {
+      return '<div class="cd-it"><div class="grow"><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b><button class="cd-rm" type="button" data-drawer-remove="' + it.id + '" title="حذف از سبد">✕</button></div>';
+    }).join('') || '<p class="muted" style="text-align:center;padding:24px">سبد خرید شما خالی است 🛒</p>';
+    drawerEl.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
+  }
 
   document.addEventListener('click', function (e) {
     var add = e.target.closest('[data-add-to-cart]');
@@ -271,4 +356,14 @@
     });
     function paint(n) { stars.forEach(function (s2, j) { s2.classList.toggle('on', j < n); }); }
   }
+
+  // ── برچسب ستون جدول‌ها برای حالت کارت موبایل ──
+  document.querySelectorAll('table.tbl').forEach(function (t) {
+    t.querySelectorAll('th').forEach(function (th, i) {
+      var txt = th.textContent.trim();
+      t.querySelectorAll('tbody td:nth-child(' + (i + 1) + ')').forEach(function (td) {
+        td.setAttribute('data-th', txt);
+      });
+    });
+  });
 })();

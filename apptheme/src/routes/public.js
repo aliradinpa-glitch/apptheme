@@ -401,40 +401,79 @@ export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
   const body = `
 <div class="container section">
   <nav class="breadcrumb"><a href="/">خانه</a> <span>/</span> <span>سبد خرید</span></nav>
-  <div class="section-head"><h2>سبد خرید شما ${count ? `<span class="badge primary">${fa(count)} قالب</span>` : ''}</h2></div>
+  <div class="cart-page-head">
+    <div class="section-head" style="margin-bottom:0"><h2>سبد خرید شما ${count ? `<span class="badge primary">${fa(count)} قالب</span>` : ''}</h2></div>
+    ${rows.length ? `<button class="btn sm ghost" id="cartClearAll"><span>🧹</span> خالی کردن سبد</button>` : ''}
+  </div>
   ${rows.length ? `
-  <div class="card card-pad" id="cartBox">
-    ${rows.map(r => `
-    <div class="between checkout-row" data-cart-row="${r.id}">
-      <div class="flex" style="gap:12px;align-items:center">
-        <div class="grow"><b><a href="/templates/${esc(r.slug)}">${esc(r.title)}</a></b></div>
-        <form method="post" action="/cart/qty" class="flex" style="gap:6px;align-items:center">
+  <div class="admin-2col" style="grid-template-columns:1.6fr 1fr">
+    <div class="card card-pad" id="cartBox" style="display:grid;gap:4px">
+      ${rows.map(r => `
+      <div class="cart-item" data-cart-row="${r.id}">
+        <div class="ct-thumb">${svgThumb({ id: r.id, title: r.title, palette: r.palette, accent: r.accent })}</div>
+        <div class="grow">
+          <b><a href="/templates/${esc(r.slug)}" class="ct-title">${esc(r.title)}</a></b>
+          <div class="muted small">${fa(r.qty)} × ${money(r.price)}</div>
+        </div>
+        <form method="post" action="/cart/qty" class="flex" style="gap:6px">
           <input type="hidden" name="_csrf" value="${esc(csrf)}">
           <input type="hidden" name="productId" value="${r.id}">
-          <label class="muted small">تعداد</label>
-          <select class="select" name="qty" style="width:auto;padding:6px 10px" onchange="this.form.submit()">
+          <select class="select ct-qty-select" name="qty" onchange="this.form.submit()" aria-label="تعداد">
             ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === r.qty ? 'selected' : ''}>${fa(n)}</option>`).join('')}
           </select>
           <noscript><button class="btn sm soft" type="submit">ثبت</button></noscript>
         </form>
-        <form method="post" action="/cart/remove">
+        <b class="ct-line">${money(r.line)}</b>
+        <form method="post" action="/cart/remove" data-cart-remove-form="${r.id}">
           <input type="hidden" name="_csrf" value="${esc(csrf)}">
           <input type="hidden" name="productId" value="${r.id}">
-          <button class="btn sm ghost" type="submit" title="حذف">🗑</button>
+          <button class="ct-remove" type="submit" title="حذف از سبد" aria-label="حذف ${esc(r.title)}">✕</button>
         </form>
-      </div>
-      <b>${money(r.line)}</b>
-    </div>`).join('')}
-    <div class="between checkout-row" style="border-top:1.5px solid var(--border)">
-      <span class="muted">جمع سبد</span><b class="price" style="font-size:1.2rem">${money(subtotal)}</b>
+      </div>`).join('')}
     </div>
-    <div class="flex" style="gap:10px;margin-top:16px;flex-wrap:wrap">
-      <a class="btn lg" href="/checkout?items=${esc(itemsStr)}">ادامه تسویه و پرداخت</a>
-      <a class="btn lg ghost" href="/templates">افزودن قالب بیشتر</a>
+    <div class="card card-pad cart-total-panel">
+      <h3 style="margin-bottom:12px">🧾 خلاصه سفارش</h3>
+      <div class="ct-row"><span class="muted">قالب‌ها</span><span>${fa(count)} عدد</span></div>
+      <div class="ct-row"><span class="muted">جمع کل</span><b>${money(subtotal)}</b></div>
+      <div class="ct-row"><span class="muted">تخفیف مناسبت</span><span class="badge warn">در تسویه</span></div>
+      <div class="ct-row total"><span>مبلغ قابل پرداخت</span><b class="price" style="font-size:1.35rem">${money(subtotal)}</b></div>
+      <a class="btn lg" style="width:100%;margin-top:10px" href="/checkout?items=${esc(itemsStr)}">ادامه تسویه و پرداخت ⚡</a>
+      <a class="btn lg ghost" style="width:100%" href="/templates">+ افزودن قالب بیشتر</a>
+      <p class="hint center" style="margin-top:10px">🔒 پرداخت امن از طریق درگاه رسمی</p>
     </div>
   </div>` : `
-  <div class="card empty-state"><div class="ic">🛒</div><p>سبد خرید شما خالی است.</p><a class="btn" style="margin-top:16px" href="/templates">مشاهده قالب‌ها</a></div>`}
-</div>`;
+  <div class="card cart-empty"><div class="ce-ic">🛒</div>
+    <h3>سبد خرید شما خالی است!</h3>
+    <p class="muted small">قالب‌های حرفه‌ای ما منتظر شما هستند، از همین‌جا شروع کنید.</p>
+    <a class="btn lg" style="margin-top:8px" href="/templates">مشاهده قالب‌ها ✨</a>
+  </div>`}
+</div>
+<script>
+(function(){
+  var csrf = (document.querySelector('meta[name="csrf"]')||{}).content||'';
+  var clearBtn = document.getElementById('cartClearAll');
+  if (clearBtn) clearBtn.addEventListener('click', function(){
+    tlConfirm('همه <b>'+document.querySelectorAll('[data-cart-row]').length+'</b> قالب از سبد حذف شوند؟', { okText:'بله، خالی کن', danger:true, icon:'🧹', title:'خالی کردن سبد' })
+    .then(function(ok){
+      if(!ok) return;
+      fetch('/cart/clear', { method:'POST', headers:{'X-CSRF':csrf, 'Accept':'application/json'} }).then(function(){ location.reload(); });
+    });
+  });
+  document.addEventListener('submit', function(e){
+    var f = e.target.closest('form[data-cart-remove-form]');
+    if(!f || f.dataset.confirmed==='1') return;
+    e.preventDefault();
+    var row = f.closest('[data-cart-row]');
+    var name = row ? row.querySelector('.ct-title').textContent : 'این قالب';
+    tlConfirm('<b>'+name+'</b> از سبد حذف شود؟', { okText:'بله، حذف کن', danger:true, icon:'🗑' })
+    .then(function(ok){
+      if(!ok) return;
+      f.dataset.confirmed='1';
+      f.requestSubmit ? f.requestSubmit() : f.submit();
+    });
+  });
+})();
+</script>`;
   return page({
     user, title: `سبد خرید | ${APP_NAME}`, desc: 'سبد خرید فروشگاه قالب اپ‌تم', url: baseUrl + '/cart', body, csrf,
   });
@@ -521,7 +560,7 @@ export function accountPage(req, res, ctx) {
   return page({ user, title: `حساب کاربری | ${APP_NAME}`, desc: 'پنل کاربری اپ‌تم', url: baseUrl + '/account', body, noindex: true, csrf });
 }
 
-// ─── صفحات ورود / ثبت‌نام / نصب اولیه ───
+// ─── صفحات ورود / ثبت‌نام / نصب اولیه (نسخهٔ فوق‌حرفه‌ای — هم‌خانواده با مودال) ───
 export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user = null, needsSetup = false, query = {} }) {
   const isSetup = mode === 'setup';
   const isLogin = mode === 'login';
@@ -532,9 +571,9 @@ export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user =
   const body = `
 <div class="auth-wrap">
   <div class="card auth-card auth-pro">
-    <div class="logo" style="margin-bottom:14px"><span class="mark">پ</span>اپ‌تم</div>
-    <h1>${title}</h1>
-    <p class="sub">${isSetup ? 'اولین اجرای فروشگاه؛ حساب مدیر سیستم را بسازید.' : (isLogin ? 'خوش آمدید! برای ادامه وارد شوید.' : 'در کمتر از یک دقیقه عضو اپ‌تم شوید.')}</p>
+    <div class="logo" style="justify-content:center;margin-bottom:8px"><span class="mark">پ</span>اپ‌تم</div>
+    <h1 style="text-align:center">${isLogin ? 'خوش برگشتید 👋' : title}</h1>
+    <p class="sub" style="text-align:center">${isSetup ? 'اولین اجرای فروشگاه؛ حساب مدیر سیستم را بسازید.' : (isLogin ? 'برای ادامه وارد حساب خود شوید.' : 'کمتر از یک دقیقه؛ هدیه <b class="grad-text">WELCOME10</b> انتظار شماست.')}</p>
     ${!isSetup ? `
     <div class="auth-tabs" role="tablist">
       <a href="/login" class="${isLogin ? 'on' : ''}" role="tab">ورود</a>
@@ -545,13 +584,21 @@ export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user =
     ${oauthErr}
     <form method="post" action="${action}">
       <input type="hidden" name="_csrf" value="${esc(csrf)}">
-      ${isLogin ? '' : `<div class="field"><label class="req">نام و نام خانوادگی</label><input class="input" type="text" name="name" required minlength="2" maxlength="60" autocomplete="name"></div>`}
-      <div class="field"><label class="req">ایمیل یا شماره موبایل</label><input class="input" type="text" name="identifier" required autocomplete="username" dir="ltr" placeholder="you@gmail.com یا ۰۹۱۲۳۴۵۶۷۸۹"><p class="hint">${isLogin ? '' : 'با جیمیل ثبت‌نام کنید و ایمیل را تأیید کنید؛ یا فقط موبایل بدهید و فوری فعال شوید.'}</p></div>
+      ${isSetup || !isLogin ? `<div class="field"><label class="req">نام و نام خانوادگی</label>
+        <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+        <input class="input" type="text" name="name" required minlength="2" maxlength="60" autocomplete="name" placeholder="مثلاً: سارا محمدی"></div></div>` : ''}
+      <div class="field"><label class="req">ایمیل یا شماره موبایل</label>
+        <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
+        <input class="input" type="text" name="identifier" required autocomplete="username" dir="ltr" placeholder="you@gmail.com یا ۰۹۱۲۳۴۵۶۷۸۹"></div>
+        <p class="hint">${isLogin ? '' : 'با جیمیل ثبت‌نام کنید و ایمیل را تأیید کنید؛ یا فقط موبایل بدهید و فوری فعال شوید.'}</p></div>
       <div class="field">
-        <div class="between"><label class="req">رمز عبور</label>${isLogin ? '<a class="small" href="/forgot" style="color:var(--primary)">فراموشی رمز؟ 🔑</a>' : ''}</div>
-        <input class="input" type="password" name="password" required minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" dir="ltr"><p class="hint">حداقل ۸ کاراکتر.</p>
+        <div class="between"><label class="req">رمز عبور</label>${isLogin ? '<a class="af-forgot" href="/forgot">فراموشی رمز؟ 🔑</a>' : ''}</div>
+        <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input class="input" type="password" name="password" required minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" dir="ltr" placeholder="${isLogin ? '••••••••' : 'حداقل ۸ کاراکتر'}">
+        <button type="button" class="af-eye" id="afEye" aria-label="نمایش رمز">👁</button></div>
+        <p class="hint">حداقل ۸ کاراکتر.</p>
       </div>
-      <button class="btn lg" type="submit" style="width:100%">${isSetup ? 'ساخت حساب مدیر و ورود' : (isLogin ? 'ورود به حساب' : 'ساخت حساب')}</button>
+      <button class="btn lg" type="submit" style="width:100%">${isSetup ? 'ساخت حساب مدیر و ورود 🚀' : (isLogin ? 'ورود به حساب 🚀' : 'ساخت حساب + هدیه WELCOME10 🎁')}</button>
     </form>
     ${!isSetup ? `
     <div class="oauth-sep"><span>یا ورود سریع با</span></div>
@@ -562,9 +609,21 @@ export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user =
       <a class="oauth-btn off" href="/login" data-needs-setup="bale">💬 بله</a>
       <a class="oauth-btn off" href="/login" data-needs-setup="rubika">🟣 روبیکا</a>
     </div>
-    ${!isLogin ? '<div class="alert info" style="margin-top:16px">🎁 هدیه ثبت‌نام: کد تخفیف <b>WELCOME10</b> (۱۰٪ اولین خرید) + تخفیف‌های ویژه اعضا</div>' : ''}` : ''}
+    ${isLogin ? '' : '<div class="alert info" style="margin-top:16px">🎁 هدیه ثبت‌نام: کد تخفیف <b>WELCOME10</b> (۱۰٪ اولین خرید) + تخفیف‌های ویژه اعضا</div>'}` : ''}
   </div>
-</div>`;
+</div>
+<script>
+(function(){
+  var eye = document.getElementById('afEye');
+  if (eye) eye.addEventListener('click', function(){
+    var inp = eye.parentElement.querySelector('input[type=password], input[type=text]');
+    if (!inp) return;
+    var isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    eye.textContent = isPass ? '🙈' : '👁';
+  });
+})();
+</script>`;
   return page({ user, title: `${title} | ${APP_NAME}`, desc: title, body, noindex: true, csrf });
 }
 

@@ -42,7 +42,7 @@ export function cartSummary(items) {
     const p = findOne('products', x => x.id === id && x.published);
     if (!p) return null;
     const price = p.salePrice || p.price;
-    return { id, qty, title: p.title, slug: p.slug, price, line: price * qty };
+    return { id, qty, title: p.title, slug: p.slug, price, line: price * qty, palette: p.palette, accent: p.accent };
   }).filter(Boolean);
   return { rows, count: rows.reduce((s, r) => s + r.qty, 0), subtotal: rows.reduce((s, r) => s + r.line, 0) };
 }

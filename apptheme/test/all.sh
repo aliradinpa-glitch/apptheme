@@ -36,9 +36,11 @@ ck "apps" "ویزارد" "$(curl -s $B/apps)"
 ck "sitemap" "/apps" "$(curl -s $B/sitemap.xml)"
 
 # ─── ۲. نصب و ورود ادمین ───
-C=$(curl -s -c $JAR $B/setup | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
-r=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/setup --data-urlencode "_csrf=$C" --data-urlencode "name=مدیر اپ‌تم" --data-urlencode "email=admin@apptheme.ir" --data-urlencode "password=Admin@1403")
-ck "setup-admin" "/admin" "$r"
+# از این نسخه، ادمین همراه دیتابیس نمونه ساخته می‌شود؛ /setup فقط روی دیتابیس بدون ادمین فعال است.
+r=$(curl -s -b $JAR -o /dev/null -w "%{http_code}" $B/setup)
+ck "setup-disabled-when-admin-exists" "302" "$r"
+r=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/setup --data-urlencode "_csrf=" --data-urlencode "name=X" --data-urlencode "email=x@x.ir" --data-urlencode "password=xxxxxxxx")
+ck "setup-post-redirects-login" "/login" "$r"
 rm -f $JAR
 C=$(curl -s -c $JAR $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 r=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{redirect_url}" -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=admin@apptheme.ir" --data-urlencode "password=Admin@1403")
@@ -200,7 +202,7 @@ ck "gen-parsed-brand" 'رومیکا' "$R"
 GTOKEN=$(echo "$R" | grep -o '"token":"[a-f0-9]*"' | cut -d'"' -f4)
 PV=$(curl -s $B/preview/gen/$GTOKEN)
 ck "gen-preview" "رومیکا" "$PV"
-ck "gen-preview-dark" "#0e1118" "$PV"
+ck "gen-preview-dark" "--c1:" "$PV"
 ck "gen-preview-menu" "منوی ویژه" "$PV"
 Z=$(curl -s -b $JAR -o /tmp/gen.zip -w "%{http_code}" $B/admin/generator/download/$GTOKEN)
 ck "gen-zip" "200" "$Z"
@@ -280,13 +282,13 @@ ck "404" "صفحه پیدا نشد" "$(curl -s $B/xyz)"
 
 # ─── ۱۷. سبد سروری + فراموشی رمز + ورود اجتماعی ───
 GJ=/tmp/tl-guest-cart.txt; rm -f $GJ
-curl -s -c $GJ -o /dev/null $B/
-ck "cart-add-nojs" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/add -d "productId=1")"
-curl -s -b $GJ -c $GJ -o /dev/null -X POST $B/cart/add -d "productId=4&qty=2"
+GC=$(curl -s -b $GJ -c $GJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
+ck "cart-add-nojs" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/add --data-urlencode "_csrf=$GC" -d "productId=1")"
+curl -s -b $GJ -c $GJ -o /dev/null -X POST $B/cart/add --data-urlencode "_csrf=$GC" -d "productId=4&qty=2"
 ck "cart-page-ssr" "ادامه تسویه و پرداخت" "$(curl -s -b $GJ $B/cart)"
 ck "cart-page-item" "نوین‌شاپ" "$(curl -s -b $GJ $B/cart)"
 ck "cart-summary-json" "\"ok\":true" "$(curl -s -b $GJ $B/cart/summary)"
-ck "cart-remove" "" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/remove -d "productId=4")"
+ck "cart-remove" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/remove --data-urlencode "_csrf=$GC" -d "productId=4")"
 ck "cart-badge-count" "count" "$(curl -s -b $GJ $B/cart/summary)"
 FJ=/tmp/tl-forgot.txt; rm -f $FJ
 curl -s -c $FJ -o /dev/null $B/
@@ -312,13 +314,14 @@ ck "card-tier-pro" "حرفه‌ای" "$(curl -s "$B/templates?tier=pro")"
 ck "filter-sale" "تخفیف" "$(curl -s "$B/templates?sale=1")"
 ck "filter-clear-btn" "حذف فیلترها" "$(curl -s "$B/templates?tier=eco")"
 GJ2=/tmp/tl-card.txt; rm -f $GJ2
-curl -s -c $GJ2 -o /dev/null $B/
-curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/add -d "productId=1"
+GC2=$(curl -s -b $GJ2 -c $GJ2 $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
+curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/add --data-urlencode "_csrf=$GC2" -d "productId=1"
 ck "card-in-cart-state" "در سبد — حذف" "$(curl -s -b $GJ2 $B/templates)"
-curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/remove -d "productId=1"
+curl -s -b $GJ2 -c $GJ2 -o /dev/null -X POST $B/cart/remove --data-urlencode "_csrf=$GC2" -d "productId=1"
 ck "card-removed-state" "افزودن به سبد" "$(curl -s -b $GJ2 $B/templates)"
 ck "auth-modal-onpage" "authModal" "$(curl -s $B/)"
-ck "auth-modal-tabs" "authTabs" "$(curl -s $B/)"
+ck "auth-modal-views" "data-view=\"forgot\"" "$(curl -s $B/)"
+ck "auth-modal-brand-panel" "ab-feats" "$(curl -s $B/)"
 ck "auth-modal-needs-setup" "data-needs-setup" "$(curl -s $B/)"
 
 # ─── ۱۹. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───

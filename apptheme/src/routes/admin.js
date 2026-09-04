@@ -6,7 +6,7 @@ import { findMany, findOne, insert, updateOne, removeOne, getDb, persist, replac
 import { login } from '../auth.js';
 import { FRAMEWORKS } from '../config.js';
 import { OCCASIONS, occasionRangeLabel } from '../occasions.js';
-import { parsePrompt, generateFromSpec, generateSpecZip, SPEC_TYPE_LABELS } from '../promptgen.js';
+import { parsePrompt, generateFromSpec, generateSpecZip, SPEC_TYPE_LABELS, MODE_LABELS } from '../promptgen.js';
 import { makeZip } from '../zip.js';
 import { PROJECT_STATUS, SPEC_LABELS, POLICY } from '../apporder.js';
 import * as walletMod from '../wallet.js';
@@ -648,6 +648,13 @@ export function generatorPage(req, res, { user }) {
     <div class="field">
       <textarea id="genPrompt" class="textarea" style="min-height:120px" placeholder="مثلاً: ${esc(examples[0])}"></textarea>
     </div>
+    <div class="field">
+      <label>سبک طراحی 🎨 <span class="muted small">(اختیاری — پیش‌فرض: تشخیص خودکار هوشمند)</span></label>
+      <div class="gen-modes" id="genModes">
+        <button type="button" class="mode-chip on" data-mode="" title="هوش مصنوعی خودش بهترین سبک را انتخاب می‌کند">✨ خودکار</button>
+        ${Object.entries(MODE_LABELS).map(([k, l]) => `<button type="button" class="mode-chip" data-mode="${k}" title="${l}">${['⚡','🪟','▫️','🟥','👑','🤖','🌈','📰'][Object.keys(MODE_LABELS).indexOf(k)]} ${l}</button>`).join('')}
+      </div>
+    </div>
     <div class="gen-examples">
       ${examples.map(e => `<button type="button" class="chip-ex" data-ex="${esc(e)}">${esc(e.slice(0, 38))}…</button>`).join('')}
     </div>
@@ -700,9 +707,11 @@ export function handleGenerate(req, res, ctx) {
   if (prompt.length < 8) return { json: { ok: false, error: 'پرامپت طولانی‌تری بنویس (حداقل ۸ حرف).' } };
   const fw = ['html', 'tailwind', 'bootstrap', 'react', 'vue'].includes(ctx.body.fw) ? ctx.body.fw : 'html';
   const spec = parsePrompt(prompt);
+  // انتخاب دستی سبک طراحی توسط کاربر (یا خودکار)
+  if (ctx.body.mode && MODE_LABELS[ctx.body.mode]) spec.mode = ctx.body.mode;
   const token = randomToken(16);
   insert('generatedTemplates', { token, prompt, spec, framework: fw, productId: null, createdAt: new Date().toISOString() });
-  return { json: { ok: true, token, spec: { type: spec.type, typeLabel: SPEC_TYPE_LABELS[spec.type], brand: spec.brand, palette: spec.palette, dark: spec.dark, sections: spec.sections } } };
+  return { json: { ok: true, token, spec: { type: spec.type, typeLabel: SPEC_TYPE_LABELS[spec.type], brand: spec.brand, palette: spec.palette, dark: spec.dark, mode: spec.mode, modeLabel: MODE_LABELS[spec.mode] || spec.mode, sections: spec.sections } } };
 }
 
 export function handleGenPublish(req, res, ctx) {
@@ -713,7 +722,7 @@ export function handleGenPublish(req, res, ctx) {
   const doc = {
     title: `${spec.brand} — قالب ${T}`,
     slug: slugify(spec.brand),
-    description: `قالب ${T} با طراحی ${spec.dark ? 'تیره و مدرن' : 'روشن و مینیمال'}؛ تولیدشده با قالب‌ساز هوشمند اپ‌تم از پرامپت کاربر.`,
+    description: `قالب ${T} با سبک طراحی «${MODE_LABELS[spec.mode] || 'حرفه‌ای'}» و تم ${spec.dark ? 'تیره نئونی' : 'روشن مدرن'}؛ تولیدشده با قالب‌ساز هوشمند اپ‌تم از پرامپت کاربر.`,
     longDescription: `این قالب با قالب‌ساز هوشمند اپ‌تم و بر اساس پرامپت «${spec.prompt.slice(0, 200)}» تولید شده است. شامل صفحات کامل (خانه، درباره ما، تماس) با پالت رنگی اختصاصی و بخش‌های: ${spec.sections.join('، ')}. خروجی HTML خالص بهینه به‌همراه نسخه‌های شروع Tailwind/Bootstrap/React/Vue در بسته دانلودی.`,
     price: Math.max(0, parseMoney(ctx.body.price) || 690000), salePrice: null,
     categoryIds: [({ shop: 1, corporate: 2, portfolio: 3, landing: 4, restaurant: 5, agency: 6, clinic: 2, edu: 2, travel: 4, blog: 3 })[spec.type] || 4],

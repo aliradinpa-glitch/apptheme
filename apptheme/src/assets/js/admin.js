@@ -111,4 +111,14 @@
         .catch(function () { window.tlToast('خطای شبکه', 'err', { title: 'ناموفق' }); });
     });
   });
+
+  // ── برچسب ستون جدول‌ها برای حالت کارت موبایل ──
+  document.querySelectorAll('table.tbl').forEach(function (t) {
+    t.querySelectorAll('th').forEach(function (th, i) {
+      var txt = th.textContent.trim();
+      t.querySelectorAll('tbody td:nth-child(' + (i + 1) + ')').forEach(function (td) {
+        td.setAttribute('data-th', txt);
+      });
+    });
+  });
 })();

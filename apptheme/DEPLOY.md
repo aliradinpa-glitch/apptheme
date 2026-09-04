@@ -69,12 +69,21 @@ docker build -t apptheme .
 docker run -d -p 80:3000 -v apptheme-data:/app/data -e SITE_URL=https://apptheme.ir apptheme
 ```
 
-## گزینه ۴: VPS (وقتی پولش را دادید!)
+## گزینه ۴: VPS (استقرار حرفه‌ای — پیشنهادی)
+
+> راهنمای مبتدی‌پسند کامل: **[GUIDE.md](GUIDE.md) → بخش ۴** (قدم‌به‌قدم با PM2 و SSL)
 
 ```bash
-# فقط Node 18+ لازم است — هیچ نصب اضافه‌ای نه
-git clone <repo> && cd themeland
-SITE_URL=https://apptheme.ir PORT=80 node server.js
+# ۱) Node 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+# ۲) پروژه
+cd /opt && git clone https://github.com/aliradinpa-glitch/apptheme.git && cd apptheme/apptheme
+# ۳) PM2 (دائم روشن + خودکار بعد از ریبوت)
+npm i -g pm2
+pm2 start ecosystem.config.js   # SITE_URL و PORT را داخل این فایل بگذار
+pm2 save && pm2 startup
+# ۴) SSL خودکار با Caddy
+apt-get install -y caddy && echo "YOUR-DOMAIN.com { reverse_proxy 127.0.0.1:3000 }" > /etc/caddy/Caddyfile && systemctl restart caddy
 ```
 
 ### مهاجرت از هاست رایگان به هاست جدید (۳ دقیقه!)

@@ -641,3 +641,206 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; min-width:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   مودال احراز هویت «اورا» — دوپنلی، بدون اسکرول، ۳ وضعیت
+   ═══════════════════════════════════════════════════════════════ */
+#authModal { display: none; }
+#authModal.on { display: grid; }
+#authModal .tl-box { max-width: 830px; width: min(830px, 96vw); max-height: calc(100dvh - 28px); }
+#authModal .tl-box::-webkit-scrollbar { display: none; }
+.auth-grid { display: grid; grid-template-columns: 300px 1fr; min-height: 0; }
+@media (max-width: 720px) { .auth-grid { grid-template-columns: 1fr; } }
+
+/* پنل برند */
+.auth-brand { position: relative; overflow: hidden; background: linear-gradient(160deg, #1a2154, #12173d); padding: 30px 26px; display: flex; flex-direction: column; }
+@media (max-width: 720px) { .auth-brand { display: none; } }
+.auth-brand::before { content: ''; position: absolute; inset: 0; background:
+  radial-gradient(16rem 12rem at 110% -10%, rgba(124, 92, 255, .28), transparent 60%),
+  radial-gradient(13rem 10rem at -20% 110%, rgba(34, 211, 238, .18), transparent 60%); }
+.ab-orb { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .5; animation: orbFloat 7s ease-in-out infinite; }
+.ab-orb.o1 { width: 130px; height: 130px; background: radial-gradient(circle, rgba(124, 92, 255, .34), transparent 70%); top: -30px; inset-inline-end: -30px; }
+.ab-orb.o2 { width: 100px; height: 100px; background: radial-gradient(circle, rgba(34, 211, 238, .28), transparent 70%); bottom: 60px; inset-inline-start: -20px; animation-delay: -2.4s; }
+.ab-orb.o3 { width: 60px; height: 60px; background: radial-gradient(circle, rgba(244, 114, 182, .3), transparent 70%); bottom: -10px; inset-inline-end: 24px; animation-delay: -4.5s; }
+@keyframes orbFloat { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-16px) scale(1.08); } }
+.ab-inner { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.ab-inner .logo { color: #fff; }
+.ab-inner h3 { color: #fff; font-size: 1.12rem; line-height: 1.8; margin-top: 6px; }
+.ab-feats { display: grid; gap: 10px; margin-top: 4px; }
+.ab-feats li { display: flex; gap: 10px; align-items: center; color: #c3cbf2; font-size: .86rem; }
+.ab-feats li span { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(124, 92, 255, .16); border: 1px solid rgba(124, 92, 255, .3); font-size: .85rem; }
+.ab-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 10px; }
+
+/* پنل فرم */
+.auth-side { position: relative; padding: 26px 28px 22px; overflow: auto; max-height: calc(100dvh - 30px); }
+.auth-box .auth-x { position: absolute; top: 13px; inset-inline-end: 15px; z-index: 5; }
+.auth-switch { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); margin-bottom: 4px; min-height: 22px; }
+.auth-switch a { color: var(--primary); font-weight: 700; }
+.auth-view { display: none; animation: viewIn .32s cubic-bezier(.2,.9,.3,1); }
+.auth-view.on { display: block; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.av-head { margin: 4px 0 14px; }
+.av-head h3 { font-size: 1.15rem; font-weight: 800; }
+.av-head p { margin-top: 2px; }
+.auth-f { display: grid; gap: 12px; }
+.af-field { display: grid; gap: 6px; }
+.af-field > label { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.af-ic { position: relative; display: flex; align-items: center; }
+.af-ic > svg { position: absolute; inset-inline-start: 13px; color: var(--muted); pointer-events: none; }
+.af-ic .input { padding-inline-start: 40px; padding-inline-end: 42px; }
+.af-eye { position: absolute; inset-inline-end: 8px; border: 0; background: none; cursor: pointer; font-size: .95rem; opacity: .55; transition: .15s; padding: 4px; }
+.af-eye:hover { opacity: 1; }
+.af-forgot { justify-self: start; border: 0; background: none; color: var(--primary); font-size: .8rem; font-weight: 600; cursor: pointer; padding: 0; }
+.af-forgot:hover { text-decoration: underline; }
+.af-back { margin-top: 14px; border: 1.5px solid var(--border); background: none; color: var(--muted); font-size: .82rem; font-weight: 600; padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: .15s; font-family: inherit; }
+.af-back:hover { color: var(--primary); border-color: var(--primary); }
+/* قدرت رمز */
+.af-strength { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 2px; }
+.af-strength i { height: 4px; border-radius: 99px; background: var(--surface-2); transition: .3s; }
+.af-strength.s1 i:nth-child(1) { background: #fb7185; box-shadow: 0 0 8px rgba(251,113,133,.5); }
+.af-strength.s2 i:nth-child(-n+2) { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,.5); }
+.af-strength.s3 i:nth-child(-n+3) { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,.5); }
+.af-strength.s4 i { background: #a3e635; box-shadow: 0 0 8px rgba(163,230,53,.55); }
+/* بازیابی */
+.forgot-done { text-align: center; padding: 18px 8px 6px; display: grid; gap: 8px; justify-items: center; }
+.forgot-done .fd-ic { width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; font-size: 1.6rem; background: color-mix(in srgb, var(--ok) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); animation: icFloat 3s ease-in-out infinite; }
+.forgot-done b { font-size: 1rem; }
+.forgot-done p { max-width: 24rem; }
+/* ورود اجتماعی */
+#authModal .oauth-sep { margin: 16px 0 8px; }
+#authModal .oauth-btn { background: var(--surface); padding: 8px 13px; font-size: .8rem; }
+
+@media (max-width: 620px) {
+  .auth-side { padding: 20px 18px 18px; }
+  #authModal .tl-box { padding: 0; }
+}
+
+/*
+   صفحه سبد خرید — حرفه‌ای
+*/
+.cart-page-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+.cart-total-panel { position: sticky; top: 94px; display: grid; gap: 12px; }
+.ct-row { display: flex; justify-content: space-between; align-items: center; font-size: .92rem; }
+.ct-row.total { border-top: 1.5px dashed var(--border); padding-top: 14px; margin-top: 4px; }
+.ct-row.total b { font-size: 1.25rem; }
+.ct-remove { border: 1.5px solid color-mix(in srgb, var(--err) 30%, transparent); background: color-mix(in srgb, var(--err) 8%, transparent); color: var(--err); width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 1rem; cursor: pointer; transition: .2s; }
+.ct-remove:hover { background: var(--err); color: #fff; box-shadow: 0 8px 22px rgba(225, 29, 72, .4); transform: translateY(-2px); }
+.ct-thumb { width: 74px; height: 52px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+.ct-thumb svg { width: 100%; height: 100%; }
+.ct-qty-select { width: auto; padding: 7px 10px; border-radius: 10px; }
+.cart-empty { display: grid; justify-items: center; gap: 12px; padding: 64px 20px; text-align: center; }
+.cart-empty .ce-ic { font-size: 3.4rem; filter: drop-shadow(0 0 24px color-mix(in srgb, var(--primary) 40%, transparent)); }
+@media (max-width: 720px) {
+  .cart-total-panel { position: static; }
+  .ct-row img, .ct-row .ct-thumb { display: none; }
+}
+
+/* ─── آیتم‌های سبد خرید ─── */
+.cart-item { display: flex; align-items: center; gap: 14px; padding: 12px 8px; border-bottom: 1px dashed var(--border); transition: background .15s; border-radius: 10px; }
+.cart-item:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+.cart-item:last-child { border-bottom: none; }
+.cart-item .ct-title { font-size: .95rem; }
+.cart-item .ct-line { font-size: .98rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
+@media (max-width: 640px) {
+  .cart-item { flex-wrap: wrap; }
+  .cart-item .ct-line { order: 3; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   «اورا ۳.۰» — لایهٔ پولیش نهایی: درخشش دکمه‌ها، منوی سیال،
+   جدول → کارت در موبایل، هاله‌های نرم
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── دکمه‌ها: براق‌شدن مورب هنگام hover ─── */
+.btn {
+  position: relative; overflow: hidden; isolation: isolate;
+  transition: transform .18s ease, box-shadow .25s ease, background .25s ease;
+}
+.btn::after {
+  content: ''; position: absolute; top: -60%; bottom: -60%; width: 42px;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: skewX(-22deg) translateX(-160%); transition: transform .55s ease; z-index: 1;
+}
+.btn:hover::after { transform: skewX(-22deg) translateX(420%); }
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.97); }
+
+/* ─── منوی ناوبری: حالت فعال چندلایه + نقطهٔ نورانی ─── */
+.nav-links a { position: relative; }
+.nav-links a::before {
+  content: ''; position: absolute; bottom: 4px; inset-inline: 16px; height: 2px; border-radius: 99px;
+  background: var(--grad); transform: scaleX(0); transform-origin: var(--dir, right);
+  transition: transform .28s cubic-bezier(.2,.9,.3,1);
+}
+.nav-links a:hover::before { transform: scaleX(.6); }
+.nav-links a.active::before { transform: scaleX(1); }
+.nav-links a.active {
+  color: #fff; background: var(--grad);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--primary) 48%, transparent), 0 0 0 1px rgba(255,255,255,.12) inset;
+}
+.nav-links a.active::after {
+  content: ''; position: absolute; top: 7px; inset-inline-end: 8px; width: 5px; height: 5px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 8px #fff; animation: dotPulse 1.6s ease-in-out infinite;
+}
+@keyframes dotPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.7); } }
+
+/* ─── منوی موبایل: بازشدن فنری با پس‌زمینهٔ محو ─── */
+@media (max-width: 1020px) {
+  .nav-links {
+    top: 66px; inset-inline: 12px; transform: translateY(-14px) scale(.98); opacity: 0; pointer-events: none;
+    transition: .28s cubic-bezier(.2,.9,.3,1); border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-lg); border-radius: 18px; padding: 10px;
+  }
+  .nav-links.open { transform: none; opacity: 1; pointer-events: auto; }
+  .nav-links a { padding: 13px 16px; border-radius: 12px; font-weight: 600; }
+  .nav-links a.active { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); box-shadow: none; }
+  .nav-links a.active::after { display: none; }
+}
+
+/* ─── جدول‌ها در موبایل: کارت خوانا ─── */
+@media (max-width: 640px) {
+  .table-wrap { overflow: visible; }
+  table.tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tbody { display: grid; gap: 12px; }
+  .tbl tbody tr {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
+  }
+  .tbl td { border: 0 !important; padding: 7px 0 !important; text-align: start; font-size: .86rem; }
+  .tbl td::before {
+    content: attr(data-th); display: block; font-size: .68rem; color: var(--muted); font-weight: 700; margin-bottom: 2px;
+  }
+  .tbl td:first-child { grid-column: 1 / -1; }
+  .tbl td:nth-last-child(-n+2) { grid-column: span 1; }
+}
+
+/* ─── کارت محصول: درخشش + زوم تصویر ─── */
+.product-card { position: relative; }
+.product-card .thumb-svg { transition: transform .45s cubic-bezier(.2,.9,.3,1); }
+.product-card:hover .thumb-svg { transform: scale(1.05); }
+.product-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.07) 48%, transparent 62%);
+  transform: translateX(160%); transition: transform .7s ease; z-index: 2;
+}
+.product-card:hover::after { transform: translateX(-160%); }
+[dir="rtl"] .product-card::after { transform: translateX(-160%); }
+[dir="rtl"] .product-card:hover::after { transform: translateX(160%); }
+
+/* ─── ورودی‌ها: فوکوس نئونی نرم ─── */
+.input:focus, .textarea:focus, .select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+/* ─── چیدمان دو‌ستونه (سبد خرید و… ) ─── */
+.admin-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .admin-2col { grid-template-columns: 1fr; } }
+
+/* ─── لینک‌های احراز هویت در منوی موبایل (فقط موبایل دیده می‌شوند) ─── */
+.nav-links .m-auth { display: none; }
+@media (max-width: 1020px) {
+  .nav-links .m-auth { display: block; border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; color: var(--primary); }
+}

@@ -83,7 +83,8 @@ function navbar(user, active = '', csrf = '') {
           <form method="post" action="/logout"><input type="hidden" name="_csrf" value="${esc(csrf || '')}"><button type="submit" role="menuitem" style="color:var(--err)">${I.exit} خروج از حساب</button></form>
         </div>
       </div>`
-    : `<a class="btn sm ghost" href="/login" data-auth="login">ورود</a>
+    : `<a class="btn sm soft" href="/forgot" data-auth="forgot" title="بازیابی رمز عبور">🔑</a>
+       <a class="btn sm ghost" href="/login" data-auth="login">ورود</a>
        <a class="btn sm" href="/register" data-auth="register">ثبت‌نام ✨</a>`;
   return `
 <header class="navbar">
@@ -95,6 +96,11 @@ function navbar(user, active = '', csrf = '') {
       ${link('/apps', '🤖 سفارش اپ اندروید', 'apps')}
       ${link('/#why', '⚡ چرا اپ‌تم؟', 'why')}
       ${link('/#comments', '💬 نظرات', 'comments')}
+      ${!user ? `
+      <a class="m-auth" href="/login" data-auth="login">🔑 ورود</a>
+      <a class="m-auth" href="/register" data-auth="register">✨ ثبت‌نام</a>
+      <a class="m-auth" href="/forgot" data-auth="forgot">فراموشی رمز</a>` : `
+      <a class="m-auth" href="/account">👤 حساب کاربری</a>`}
     </nav>
     <div class="nav-actions">
       <button class="icon-btn" id="themeToggle" aria-label="تغییر تم" title="روشن/تاریک">${I.sun}</button>
@@ -175,7 +181,7 @@ export function page(opts) {
   return baseHtml({ ...opts, body, csrf: opts.csrf });
 }
 
-// ═══ مودال ورود/ثبت‌نام حرفه‌ای (روی هر صفحه، بدون رفت‌وبرگشت) ═══
+// ═══ مودال احراز هویت «اورا» — ورود/ثبت‌نام/بازیابی رمز در یک مودال بدون رفت‌وبرگشت ═══
 function authModalHtml(csrf) {
   const o = (getDb().settings.oauth) || {};
   const gh = o.githubId && o.githubSecret, gg = o.googleId && o.googleSecret, tg = o.telegramBot && o.telegramToken;
@@ -187,37 +193,115 @@ function authModalHtml(csrf) {
   <div class="tl-ov" data-close-auth></div>
   <div class="tl-box auth-box">
     <button class="auth-x" type="button" data-close-auth aria-label="بستن">×</button>
-    <div style="text-align:center; margin-bottom:6px">
-      <div class="logo" style="justify-content:center; margin-bottom:4px"><span class="mark">پ</span>اپ‌تم</div>
-      <p class="muted small">به بازار قالب‌های حرفه‌ای خوش آمدید ✨</p>
+
+    <div class="auth-grid">
+      <!-- پنل برند -->
+      <div class="auth-brand">
+        <div class="ab-orb o1"></div><div class="ab-orb o2"></div><div class="ab-orb o3"></div>
+        <div class="ab-inner">
+          <div class="logo"><span class="mark">پ</span>اپ‌تم</div>
+          <h3>حرفه‌ای‌ترین بازار قالب‌های وب</h3>
+          <ul class="ab-feats">
+            <li><span>⚡</span> دانلود آنی پس از پرداخت</li>
+            <li><span>🛡️</span> پرداخت امن با درگاه رسمی</li>
+            <li><span>🔄</span> به‌روزرسانی رایگان همیشگی</li>
+            <li><span>💬</span> پشتیبانی واقعی و پاسخگو</li>
+          </ul>
+          <div class="ab-badges">
+            <span class="badge ok">SSL امن</span><span class="badge primary">درگاه زرین‌پال</span><span class="badge info">ضمانت اصالت</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- پنل فرم -->
+      <div class="auth-side">
+        <!-- نوار وضعیت: آیا قبلاً حساب دارید؟ -->
+        <div class="auth-switch" id="authSwitch">
+          <span id="authSwitchTxt" class="hide">حساب ندارید؟ <a href="#r" data-open-view="register">ثبت‌نام کنید</a></span>
+          <span id="authSwitchTxtR" class="hide">قبلاً عضو شده‌اید؟ <a href="#l" data-open-view="login">وارد شوید</a></span>
+        </div>
+
+        <!-- وضعیت ۱: ورود -->
+        <div class="auth-view on" data-view="login">
+          <div class="av-head">
+            <h3>خوش برگشتید 👋</h3>
+            <p class="muted small">برای ادامه وارد حساب خود شوید.</p>
+          </div>
+          <form method="post" action="/login" id="authFormLogin" class="auth-f">
+            <input type="hidden" name="_csrf" value="${esc(csrf)}">
+            <div class="af-field">
+              <label>ایمیل یا شماره موبایل</label>
+              <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><input class="input" name="identifier" required dir="ltr" placeholder="you@example.com" autocomplete="username"></div>
+            </div>
+            <div class="af-field">
+              <label>رمز عبور</label>
+              <div class="af-ic">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                <input class="input" id="loginPass" type="password" name="password" required minlength="8" dir="ltr" placeholder="••••••••" autocomplete="current-password">
+                <button class="af-eye" type="button" data-eye="loginPass" aria-label="نمایش رمز">👁</button>
+              </div>
+              <button class="af-forgot" type="button" data-open-view="forgot">🔑 فراموشی رمز عبور؟</button>
+            </div>
+            <button class="btn lg" type="submit">ورود به حساب 🚀</button>
+          </form>
+          <div class="oauth-sep"><span>یا ورود سریع با</span></div>
+          <div class="oauth-row">
+            ${ob(gh, '/auth/github', '🐙 گیت‌هاب', 'github')}
+            ${ob(gg, '/auth/google', '🔴 گوگل', 'google')}
+            ${ob(tg, '/auth/telegram', '✈️ تلگرام', 'telegram')}
+          </div>
+        </div>
+
+        <!-- وضعیت ۲: ثبت‌نام -->
+        <div class="auth-view" data-view="register">
+          <div class="av-head">
+            <h3>ساخت حساب ✨</h3>
+            <p class="muted small">کمتر از یک دقیقه؛ هدیه <b class="grad-text">WELCOME10</b> انتظار شماست.</p>
+          </div>
+          <form method="post" action="/register" id="authFormReg" class="auth-f">
+            <input type="hidden" name="_csrf" value="${esc(csrf)}">
+            <div class="af-field">
+              <label>نام و نام خانوادگی</label>
+              <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><input class="input" name="name" required minlength="2" maxlength="60" placeholder="مثلاً: سارا محمدی" autocomplete="name"></div>
+            </div>
+            <div class="af-field">
+              <label>ایمیل یا شماره موبایل</label>
+              <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><input class="input" name="identifier" required dir="ltr" placeholder="you@example.com" autocomplete="username"></div>
+            </div>
+            <div class="af-field">
+              <label>رمز عبور</label>
+              <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input class="input" id="regPass" type="password" name="password" required minlength="8" dir="ltr" placeholder="حداقل ۸ کاراکتر" autocomplete="new-password">
+              <button class="af-eye" type="button" data-eye="regPass" aria-label="نمایش رمز">👁</button></div>
+              <div class="af-strength" id="passStrength"><i></i><i></i><i></i><i></i></div>
+            </div>
+            <button class="btn lg" type="submit">ساخت حساب + هدیه WELCOME10 🎁</button>
+          </form>
+          <p class="hint center" style="margin-top:12px">با ثبت‌نام، <a href="/terms" style="color:var(--primary)">قوانین سایت</a> را می‌پذیرید.</p>
+        </div>
+
+        <!-- وضعیت ۳: بازیابی رمز -->
+        <div class="auth-view" data-view="forgot">
+          <div class="av-head">
+            <h3>بازیابی رمز عبور 🔑</h3>
+            <p class="muted small">ایمیلت را بده؛ لینک بازنشانی برایت ارسال می‌شود.</p>
+          </div>
+          <form method="post" action="/forgot" id="authFormForgot" class="auth-f">
+            <input type="hidden" name="_csrf" value="${esc(csrf)}">
+            <div class="af-field">
+              <label>ایمیل حساب</label>
+              <div class="af-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><input class="input" name="identifier" required dir="ltr" placeholder="you@example.com"></div>
+            </div>
+            <button class="btn lg" type="submit">ارسال لینک بازنشانی ✉️</button>
+          </form>
+          <div id="forgotDone" class="forgot-done hide">
+            <div class="fd-ic">📬</div>
+            <b>لینک ارسال شد!</b>
+            <p class="muted small">اگر حسابی با این ایمیل وجود داشته باشد، لینک بازنشانی (۱ ساعت اعتبار) برایتان ارسال شد. صندوق ورودی و اسپم را چک کنید.</p>
+          </div>
+          <button class="af-back" type="button" data-open-view="login">→ بازگشت به ورود</button>
+        </div>
+      </div>
     </div>
-    <div class="auth-tabs" id="authTabs">
-      <a href="/login" class="on" data-tab="login">ورود</a>
-      <a href="/register" data-tab="register">ثبت‌نام</a>
-    </div>
-    <form method="post" action="/login" id="authFormLogin" class="auth-f">
-      <input type="hidden" name="_csrf" value="${esc(csrf)}">
-      <input class="input" name="identifier" required dir="ltr" placeholder="ایمیل یا شماره موبایل" autocomplete="username">
-      <input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="رمز عبور" autocomplete="current-password">
-      <button class="btn lg" type="submit">ورود به حساب 🚀</button>
-      <a class="small" href="/forgot" style="color:var(--primary);text-align:center">فراموشی رمز عبور؟ 🔑</a>
-    </form>
-    <form method="post" action="/register" id="authFormReg" class="auth-f" hidden>
-      <input type="hidden" name="_csrf" value="${esc(csrf)}">
-      <input class="input" name="name" required minlength="2" placeholder="نام و نام خانوادگی" autocomplete="name">
-      <input class="input" name="identifier" required dir="ltr" placeholder="ایمیل (جیمیل) یا موبایل" autocomplete="username">
-      <input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="رمز عبور (حداقل ۸ کاراکتر)" autocomplete="new-password">
-      <button class="btn lg" type="submit">ساخت حساب + هدیه WELCOME10 🎁</button>
-    </form>
-    <div class="oauth-sep"><span>یا ورود سریع با</span></div>
-    <div class="oauth-row">
-      ${ob(gh, '/auth/github', '🐙 گیت‌هاب', 'github')}
-      ${ob(gg, '/auth/google', '🔴 گوگل', 'google')}
-      ${ob(tg, '/auth/telegram', '✈️ تلگرام', 'telegram')}
-      <a class="oauth-btn off" href="/login" data-needs-setup="bale">💬 بله</a>
-      <a class="oauth-btn off" href="/login" data-needs-setup="rubika">🟣 روبیکا</a>
-    </div>
-    <p class="hint" style="margin-top:12px;text-align:center">با ورود/ثبت‌نام، <a href="/terms" style="color:var(--primary)">قوانین</a> را می‌پذیرید.</p>
   </div>
 </div>`;
 }
@@ -227,7 +311,7 @@ export function adminPage({ user, title, active = '', body, desc = '', csrf = ''
   // ─── منو با گروه‌بندی ───
   const groups = [
     ['مدیریت', [
-      ['/admin', 'داشبورد', 'داشبورد', 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z'],
+      ['/admin', 'داشبورد', 'dashboard', 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z'],
     ]],
     ['فروشگاه', [
       ['/admin/products', 'قالب‌ها', 'products', 'M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z'],

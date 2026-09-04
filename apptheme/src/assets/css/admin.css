@@ -375,3 +375,49 @@ h3 { font-weight: 800; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ─── چیپ‌های سبک طراحی (قالب‌ساز) ─── */
+.gen-modes { display: flex; flex-wrap: wrap; gap: 7px; }
+.mode-chip { padding: 7px 14px; border-radius: 11px; border: 1.5px solid var(--border); background: var(--surface-2); font-size: .8rem; cursor: pointer; color: var(--muted); transition: .18s; font-family: inherit; font-weight: 600; }
+.mode-chip:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
+.mode-chip.on { background: linear-gradient(135deg, var(--primary), #a78bfa); color: #fff; border-color: transparent; box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 40%, transparent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   «اورا ۳.۰» — پولیش پنل ادمین
+   ═══════════════════════════════════════════════════════════════ */
+
+/* توپ‌بار چسبان */
+.admin-topbar { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 82%, transparent); }
+
+/* دکمه‌ها: براق‌شدن مورب */
+.btn { position: relative; overflow: hidden; isolation: isolate; transition: transform .18s ease, box-shadow .25s ease; }
+.btn::after {
+  content: ''; position: absolute; top: -60%; bottom: -60%; width: 42px;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.4), transparent);
+  transform: skewX(-22deg) translateX(-160%); transition: transform .55s ease;
+}
+.btn:hover::after { transform: skewX(-22deg) translateX(420%); }
+.btn:hover { transform: translateY(-2px); }
+
+/* آیتم فعال منوی سایدبار: نوار کناری نورانی */
+.admin-nav a.on::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 20%; bottom: 20%; width: 3.5px; border-radius: 99px;
+  background: var(--grad); box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+/* ─── جدول → کارت در موبایل ─── */
+@media (max-width: 640px) {
+  .table-wrap { overflow: visible; }
+  table.tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tbody { display: grid; gap: 12px; }
+  .tbl tbody tr {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
+  }
+  .tbl td { border: 0 !important; padding: 7px 0 !important; text-align: start; font-size: .86rem; }
+  .tbl td::before { content: attr(data-th); display: block; font-size: .68rem; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+  .tbl td:first-child { grid-column: 1 / -1; }
+  .tbl td[colspan] { grid-column: 1 / -1; }
+  .admin-topbar .btn { display: none; }
+}
