@@ -1,4 +1,5 @@
 // ─── صفحات عمومی فروشگاه ───
+import { cartSummary } from '../cart.js';
 import { esc, money, faNum, faDate, timeAgo, starsSvg, svgThumb, isEmail } from '../util.js';
 import { page } from '../render.js';
 import { findMany, findOne, productRating, productLikes, getDb } from '../db.js';
@@ -168,65 +169,51 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf }) {
     return '/templates' + (p.toString() ? '?' + p.toString() : '');
   };
 
+  const chip = (active_, href_, label_) => `<a class="chip ${active_ ? 'chip-on' : ''}" href="${href_}">${label_}</a>`;
   const body = `
 <div class="container section">
   <nav class="breadcrumb"><a href="/">خانه</a> <span>/</span> <span>قالب‌ها</span></nav>
   <div class="section-head"><h2>فروشگاه قالب‌ها</h2><span class="sub">${fa(products.length)} قالب یافت شد</span></div>
-  <div class="catalog">
-    <form class="card card-pad filter-card" method="get" action="/templates" id="filterForm">
-      ${q ? `<input type="hidden" name="q" value="${esc(q)}">` : ''}
-      <h3>🗂 فیلترها</h3>
-      <div class="filter-group">
-        <b class="small">دسته‌بندی</b>
-        ${getDb().categories.map(c => `<label class="check-line"><input type="radio" name="cat" value="${esc(c.slug)}" ${cat === c.slug ? 'checked' : ''} onchange="this.form.submit()"> ${c.icon} ${esc(c.name)}</label>`).join('')}
-        <label class="check-line"><input type="radio" name="cat" value="" ${!cat ? 'checked' : ''} onchange="this.form.submit()"> همه</label>
+
+  <div class="card card-pad filter-bar" style="margin-bottom:22px">
+    <div class="flex wrap" style="gap:10px;align-items:center" id="liveSearchWrap">
+      <div class="search grow" style="min-width:220px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="input" type="search" id="liveSearch" value="${esc(q)}" placeholder="جستجوی زنده در قالب‌ها… (مثلا فروشگاه)" autocomplete="off">
+        <span class="muted small" id="searchHint" hidden>… در حال جستجو</span>
       </div>
-      <div class="filter-group">
-        <b class="small">فریمورک</b>
-        ${Object.entries(FRAMEWORKS).filter(([k]) => ['html', 'tailwind', 'bootstrap', 'react'].includes(k)).map(([k, v]) => `<label class="check-line"><input type="radio" name="fw" value="${k}" ${fw === k ? 'checked' : ''} onchange="this.form.submit()"> <span style="color:${v.color}">⬤</span> ${v.label}</label>`).join('')}
-        <label class="check-line"><input type="radio" name="fw" value="" ${!fw ? 'checked' : ''} onchange="this.form.submit()"> همه</label>
-      </div>
-      <div class="filter-group">
-        <b class="small">مرتب‌سازی</b>
-        <select class="select" name="sort" onchange="this.form.submit()">
-          <option value="new" ${sort === 'new' ? 'selected' : ''}>جدیدترین</option>
-          <option value="popular" ${sort === 'popular' ? 'selected' : ''}>پرفروش‌ترین</option>
-          <option value="cheap" ${sort === 'cheap' ? 'selected' : ''}>ارزان‌ترین</option>
-          <option value="rating" ${sort === 'rating' ? 'selected' : ''}>بهترین امتیاز</option>
-        </select>
-      </div>
-      <button class="btn ghost sm" type="submit">اعمال فیلتر</button>
-    </form>
-    <div>
-      <form class="toolbar" method="get" action="/templates">
-        ${cat ? `<input type="hidden" name="cat" value="${esc(cat)}">` : ''}
-        ${fw ? `<input type="hidden" name="fw" value="${esc(fw)}">` : ''}
-        ${sort !== 'new' ? `<input type="hidden" name="sort" value="${esc(sort)}">` : ''}
-        <div class="search grow">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" type="search" name="q" value="${esc(q)}" placeholder="جستجو در قالب‌ها…">
-        </div>
-        <button class="btn soft" type="submit">جستجو</button>
-      </form>
-      ${products.length
-        ? (() => {
-            const PER = 9;
-            const pages = Math.ceil(products.length / PER);
-            const cur = Math.min(Math.max(1, parseInt(query.page) || 1), pages);
-            const slice = products.slice((cur - 1) * PER, cur * PER);
-            const pager = pages > 1 ? `<div class="pager">${[
-              cur > 1 ? `<a class="btn ghost sm" href="${qs({ page: cur - 1 })}">قبلی →</a>` : '',
-              ...Array.from({ length: pages }, (_, i) =>
-                `<a class="btn ${i + 1 === cur ? '' : 'ghost'} sm pg-num" href="${qs({ page: i + 1 })}" ${i + 1 === cur ? 'aria-current="page"' : ''}>${fa(i + 1)}</a>`),
-              cur < pages ? `<a class="btn ghost sm" href="${qs({ page: cur + 1 })}">← بعدی</a>` : '',
-            ].join('')}</div>` : '';
-            return `<div class="grid-products">${slice.map(x => productCard(x, user)).join('')}</div>${pager}`;
-          })()
-        : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
+    </div>
+    <div class="filter-row"><b class="small muted">دسته:</b>
+      ${chip(!cat, qs({ cat: null, page: null }), 'همه')}
+      ${getDb().categories.map(c => chip(cat === c.slug, qs({ cat: c.slug, page: null }), c.icon + ' ' + c.name)).join('')}
+    </div>
+    <div class="filter-row"><b class="small muted">فناوری:</b>
+      ${chip(!fw, qs({ fw: null, page: null }), 'همه')}
+      ${Object.entries(FRAMEWORKS).filter(([k]) => ['html', 'tailwind', 'bootstrap', 'react'].includes(k)).map(([k, v]) => chip(fw === k, qs({ fw: k, page: null }), `<span style="color:${v.color}">⬤</span> ${v.label}`)).join('')}
+    </div>
+    <div class="filter-row"><b class="small muted">مرتب‌سازی:</b>
+      ${[['new', 'جدیدترین'], ['popular', 'پرفروش‌ترین'], ['cheap', 'ارزان‌ترین'], ['rating', 'بهترین امتیاز']].map(([k, l]) => chip(sort === k, qs({ sort: k, page: null }), l)).join('')}
     </div>
   </div>
-</div>`;
-
+  <div id="catalogGrid">
+  ${products.length
+    ? (() => {
+        const PER = 9;
+        const pages = Math.ceil(products.length / PER);
+        const cur = Math.min(Math.max(1, parseInt(query.page) || 1), pages);
+        const slice = products.slice((cur - 1) * PER, cur * PER);
+        const pager = pages > 1 ? `<div class="pager">${[
+          cur > 1 ? `<a class="btn ghost sm" href="${qs({ page: cur - 1 })}">قبلی →</a>` : '',
+          ...Array.from({ length: pages }, (_, i) =>
+            `<a class="btn ${i + 1 === cur ? '' : 'ghost'} sm pg-num" href="${qs({ page: i + 1 })}" ${i + 1 === cur ? 'aria-current="page"' : ''}>${fa(i + 1)}</a>`),
+          cur < pages ? `<a class="btn ghost sm" href="${qs({ page: cur + 1 })}">← بعدی</a>` : '',
+        ].join('')}</div>` : '';
+        return `<div class="grid-products">${slice.map(x => productCard(x, user)).join('')}</div>${pager}`;
+      })()
+    : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
+  </div>
+</div>
+<script src="/assets/js/catalog.js" defer></script>`;
   return page({
     user, active: 'templates',
     title: q ? `جستجو: ${q} | ${APP_NAME}` : `فروشگاه قالب‌های حرفه‌ای وب | ${APP_NAME}`,
@@ -366,17 +353,46 @@ export function productPage(req, res, ctx) {
 }
 
 // ─── سبد خرید (رندر سمت کلاینت داخل پوسته SSR) ───
-export function cartPage(req, res, { user, baseUrl, csrf }) {
-  const products = findMany('products', p => p.published);
-  const data = products.map(p => ({ id: p.id, title: p.title, price: p.salePrice || p.price, slug: p.slug }));
+export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
+  const { rows, subtotal, count } = cartSummary(cart);
+  const itemsStr = cart.map(x => x.id).join(',') || '';
   const body = `
 <div class="container section">
   <nav class="breadcrumb"><a href="/">خانه</a> <span>/</span> <span>سبد خرید</span></nav>
-  <div class="section-head"><h2>سبد خرید شما</h2></div>
-  <div class="card card-pad" id="cartBox">در حال بارگذاری…</div>
-</div>
-<script src="/assets/js/cart.js" defer></script>
-<script type="application/json" id="cartData">${JSON.stringify(data).replaceAll('<', '\\u003c')}</script>`;
+  <div class="section-head"><h2>سبد خرید شما ${count ? `<span class="badge primary">${fa(count)} قالب</span>` : ''}</h2></div>
+  ${rows.length ? `
+  <div class="card card-pad" id="cartBox">
+    ${rows.map(r => `
+    <div class="between checkout-row" data-cart-row="${r.id}">
+      <div class="flex" style="gap:12px;align-items:center">
+        <div class="grow"><b><a href="/templates/${esc(r.slug)}">${esc(r.title)}</a></b></div>
+        <form method="post" action="/cart/qty" class="flex" style="gap:6px;align-items:center">
+          <input type="hidden" name="_csrf" value="${esc(csrf)}">
+          <input type="hidden" name="productId" value="${r.id}">
+          <label class="muted small">تعداد</label>
+          <select class="select" name="qty" style="width:auto;padding:6px 10px" onchange="this.form.submit()">
+            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === r.qty ? 'selected' : ''}>${fa(n)}</option>`).join('')}
+          </select>
+          <noscript><button class="btn sm soft" type="submit">ثبت</button></noscript>
+        </form>
+        <form method="post" action="/cart/remove">
+          <input type="hidden" name="_csrf" value="${esc(csrf)}">
+          <input type="hidden" name="productId" value="${r.id}">
+          <button class="btn sm ghost" type="submit" title="حذف">🗑</button>
+        </form>
+      </div>
+      <b>${money(r.line)}</b>
+    </div>`).join('')}
+    <div class="between checkout-row" style="border-top:1.5px solid var(--border)">
+      <span class="muted">جمع سبد</span><b class="price" style="font-size:1.2rem">${money(subtotal)}</b>
+    </div>
+    <div class="flex" style="gap:10px;margin-top:16px;flex-wrap:wrap">
+      <a class="btn lg" href="/checkout?items=${esc(itemsStr)}">ادامه تسویه و پرداخت</a>
+      <a class="btn lg ghost" href="/templates">افزودن قالب بیشتر</a>
+    </div>
+  </div>` : `
+  <div class="card empty-state"><div class="ic">🛒</div><p>سبد خرید شما خالی است.</p><a class="btn" style="margin-top:16px" href="/templates">مشاهده قالب‌ها</a></div>`}
+</div>`;
   return page({
     user, title: `سبد خرید | ${APP_NAME}`, desc: 'سبد خرید فروشگاه قالب اپ‌تم', url: baseUrl + '/cart', body, csrf,
   });
@@ -464,29 +480,116 @@ export function accountPage(req, res, ctx) {
 }
 
 // ─── صفحات ورود / ثبت‌نام / نصب اولیه ───
-export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user = null, needsSetup = false }) {
+export function authForm({ mode, baseUrl, error = '', ok = '', csrf = '', user = null, needsSetup = false, query = {} }) {
   const isSetup = mode === 'setup';
   const isLogin = mode === 'login';
   const title = isSetup ? 'نصب اولیه — ساخت حساب مدیر' : (isLogin ? 'ورود به حساب' : 'ساخت حساب کاربری');
   const action = isSetup ? '/setup' : (isLogin ? '/login' : '/register');
+  const oauthErr = query.err === 'oauth' ? '<div class="alert err">ورود اجتماعی ناموفق بود یا فعال نیست. با ایمیل/موبایل وارد شوید.</div>' : '';
+  const oc = oauthBadges();
   const body = `
 <div class="auth-wrap">
-  <div class="card auth-card">
-    <div class="logo" style="margin-bottom:18px"><span class="mark">پ</span>اپ‌تم</div>
+  <div class="card auth-card auth-pro">
+    <div class="logo" style="margin-bottom:14px"><span class="mark">پ</span>اپ‌تم</div>
     <h1>${title}</h1>
     <p class="sub">${isSetup ? 'اولین اجرای فروشگاه؛ حساب مدیر سیستم را بسازید.' : (isLogin ? 'خوش آمدید! برای ادامه وارد شوید.' : 'در کمتر از یک دقیقه عضو اپ‌تم شوید.')}</p>
+    ${!isSetup ? `
+    <div class="auth-tabs" role="tablist">
+      <a href="/login" class="${isLogin ? 'on' : ''}" role="tab">ورود</a>
+      <a href="/register" class="${!isLogin ? 'on' : ''}" role="tab">ثبت‌نام</a>
+    </div>` : ''}
     ${error ? `<div class="alert err">${esc(error)}</div>` : ''}
     ${ok ? `<div class="alert ok">${esc(ok)}</div>` : ''}
+    ${oauthErr}
     <form method="post" action="${action}">
       <input type="hidden" name="_csrf" value="${esc(csrf)}">
       ${isLogin ? '' : `<div class="field"><label class="req">نام و نام خانوادگی</label><input class="input" type="text" name="name" required minlength="2" maxlength="60" autocomplete="name"></div>`}
       <div class="field"><label class="req">ایمیل یا شماره موبایل</label><input class="input" type="text" name="identifier" required autocomplete="username" dir="ltr" placeholder="you@gmail.com یا ۰۹۱۲۳۴۵۶۷۸۹"><p class="hint">${isLogin ? '' : 'با جیمیل ثبت‌نام کنید و ایمیل را تأیید کنید؛ یا فقط موبایل بدهید و فوری فعال شوید.'}</p></div>
-      <div class="field"><label class="req">رمز عبور</label><input class="input" type="password" name="password" required minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" dir="ltr"><p class="hint">حداقل ۸ کاراکتر.</p></div>
-      <button class="btn lg" type="submit" style="width:100%">${isSetup ? 'ساخت حساب مدیر و ورود' : (isLogin ? 'ورود' : 'ثبت‌نام')}</button>
+      <div class="field">
+        <div class="between"><label class="req">رمز عبور</label>${isLogin ? '<a class="small" href="/forgot" style="color:var(--primary)">فراموشی رمز؟ 🔑</a>' : ''}</div>
+        <input class="input" type="password" name="password" required minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" dir="ltr"><p class="hint">حداقل ۸ کاراکتر.</p>
+      </div>
+      <button class="btn lg" type="submit" style="width:100%">${isSetup ? 'ساخت حساب مدیر و ورود' : (isLogin ? 'ورود به حساب' : 'ساخت حساب')}</button>
     </form>
-    ${!isSetup && !isLogin ? '<div class="alert info" style="margin-top:16px">🎁 هدیه ثبت‌نام: کد تخفیف <b>WELCOME10</b> (۱۰٪ اولین خرید) + تخفیف‌های ویژه اعضا</div>' : ''}
-    ${!isSetup ? `<p class="muted small center" style="margin-top:18px">${isLogin ? 'حساب ندارید؟ <a href="/register" style="color:var(--primary)">ثبت‌نام کنید</a>' : 'قبلاً عضو شده‌اید؟ <a href="/login" style="color:var(--primary)">وارد شوید</a>'}</p>` : ''}
+    ${!isSetup ? `
+    <div class="oauth-sep"><span>یا ورود سریع با</span></div>
+    <div class="oauth-row">
+      ${oc.github}
+      ${oc.google}
+      ${oc.telegram}
+      <a class="oauth-btn off" href="/forgot?ch=bale" title="نیازمند فعال‌سازی">💬 بله</a>
+      <a class="oauth-btn off" href="/forgot?ch=rubika" title="نیازمند فعال‌سازی">🟣 روبیکا</a>
+    </div>
+    ${!isLogin ? '<div class="alert info" style="margin-top:16px">🎁 هدیه ثبت‌نام: کد تخفیف <b>WELCOME10</b> (۱۰٪ اولین خرید) + تخفیف‌های ویژه اعضا</div>' : ''}` : ''}
   </div>
 </div>`;
   return page({ user, title: `${title} | ${APP_NAME}`, desc: title, body, noindex: true, csrf });
 }
+
+// دکمه‌های ورود اجتماعی (فعال فقط اگر در تنظیمات ادمین تکمیل شده باشد)
+function oauthBadges() {
+  const oc = (getDb().settings.oauth) || {};
+  const on = (cond, href, html, title) => cond
+    ? `<a class="oauth-btn" href="${href}" title="${title}">${html}</a>`
+    : `<a class="oauth-btn off" href="/login" title="در تنظیمات ادمین فعال کنید">${html}</a>`;
+  return {
+    github: on(oc.githubId && oc.githubSecret, '/auth/github', '🐙 گیت‌هاب', 'ورود با گیت‌هاب'),
+    google: on(oc.googleId && oc.googleSecret, '/auth/google', '🔴 گوگل', 'ورود با گوگل'),
+    telegram: on(oc.telegramBot && oc.telegramToken, '/auth/telegram', '✈️ تلگرام', 'ورود با تلگرام'),
+  };
+}
+
+// ═══ فرم فراموشی رمز — ۵ کانال ═══
+export function forgotForm({ csrf, query = {} }) {
+  const ch = query.ch || 'email';
+  const desc = {
+    email: 'لینک بازیابی به ایمیل شما ارسال می‌شود (SMTP باید در تنظیمات فعال باشد).',
+    mobile: 'کارشناس ما در کمتر از ۲۴ ساعت با همین شماره تماس/پیامک می‌گیرد و رمز جدید می‌سازد.',
+    telegram: 'درخواست شما ثبت و به پشتیبانی ارسال می‌شود؛ از طریق تلگرام پاسخ می‌گیرید.',
+    bale: 'درخواست شما ثبت و به پشتیبانی ارسال می‌شود؛ از طریق بله پاسخ می‌گیرید.',
+    rubika: 'درخواست شما ثبت و به پشتیبانی ارسال می‌شود؛ از طریق روبیکا پاسخ می‌گیرید.',
+  }[ch];
+  const body = `
+<div class="auth-wrap">
+  <div class="card auth-card auth-pro">
+    <h1>🔑 بازیابی رمز عبور</h1>
+    <p class="sub">کانال ارتباطی خود را انتخاب کنید</p>
+    <div class="oauth-row" style="justify-content:center">
+      ${[['email', '📧 جیمیل'], ['mobile', '📱 موبایل'], ['telegram', '✈️ تلگرام'], ['bale', '💬 بله'], ['rubika', '🟣 روبیکا']].map(([k, l]) =>
+        `<a class="oauth-btn ${ch === k ? 'chip-on' : ''}" href="/forgot?ch=${k}">${l}</a>`).join('')}
+    </div>
+    ${query.sent ? '<div class="alert ok">✅ درخواست شما ثبت شد! حداکثر تا ۲۴ ساعت پاسخ می‌گیرید. (اگر ایمیل معتبر بود، لینک بازیابی هم ایمیل شد — پوشه اسپم را ببینید.)</div>' : ''}
+    <form method="post" action="/forgot" style="margin-top:14px">
+      <input type="hidden" name="_csrf" value="${esc(csrf)}">
+      <input type="hidden" name="ch" value="${esc(ch)}">
+      <div class="field">
+        <label class="req">${ch === 'email' ? 'ایمیل حساب' : ch === 'mobile' ? 'شماره موبایل' : 'شناسه/آیدی شما در ' + ({ telegram: 'تلگرام', bale: 'بله', rubika: 'روبیکا' })[ch]}</label>
+        <input class="input" name="identifier" required dir="ltr" placeholder="${ch === 'email' ? 'you@gmail.com' : ch === 'mobile' ? '۰۹۱۲۳۴۵۶۷۸۹' : '@myid'}">
+      </div>
+      <p class="hint">${desc}</p>
+      <button class="btn lg" type="submit" style="width:100%">ارسال درخواست بازیابی</button>
+    </form>
+    <p class="muted small center" style="margin-top:16px"><a href="/login" style="color:var(--primary)">← بازگشت به ورود</a></p>
+  </div>
+</div>`;
+  return page({ title: `بازیابی رمز عبور | ${APP_NAME}`, desc: 'بازیابی رمز', body, noindex: true, csrf });
+}
+
+// ═══ فرم تعیین رمز جدید (از لینک ایمیل) ═══
+export function resetForm({ csrf, token, query = {} }) {
+  const body = `
+<div class="auth-wrap">
+  <div class="card auth-card auth-pro">
+    <h1>🔐 تعیین رمز جدید</h1>
+    ${query.invalid ? '<div class="alert err">لینک نامعتبر یا منقضی است؛ دوباره درخواست دهید.</div>' : `
+    <form method="post" action="/reset-password">
+      <input type="hidden" name="_csrf" value="${esc(csrf)}">
+      <input type="hidden" name="token" value="${esc(token)}">
+      <div class="field"><label class="req">رمز جدید</label><input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="حداقل ۸ کاراکتر"></div>
+      <button class="btn lg" type="submit" style="width:100%">ثبت رمز جدید و ورود</button>
+    </form>`}
+  </div>
+</div>`;
+  return page({ title: `رمز جدید | ${APP_NAME}`, desc: 'تعیین رمز', body, noindex: true, csrf });
+}
+

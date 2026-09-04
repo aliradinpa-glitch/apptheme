@@ -18,6 +18,8 @@ import * as apporder from './src/apporder.js';
 import * as account from './src/routes/account.js';
 import * as wallet from './src/wallet.js';
 import { gatewayConfig, zarinpalRequest, zarinpalVerify } from './src/gateway.js';
+import { readCart, writeCart, cartAdd, cartJson } from './src/cart.js';
+import { githubStart, githubCallback, googleStart, googleCallback, telegramVerify, telegramLogin, oauthConfig } from './src/oauth.js';
 import { createLicenses } from './src/shop.js';
 import { OFFLINE_HTML } from './src/offline.js';
 import * as renderMod from './src/render.js';
@@ -117,7 +119,8 @@ const server = http.createServer(async (req, res) => {
   const { user, session } = getSessionUser(req);
   const csrf = session?.csrf || anonCsrf(req, res, isHttps);
   const baseUrl = SITE_URL || `${isHttps ? 'https' : 'http'}://${req.headers.host || 'localhost'}`;
-  const ctx = { user, session, csrf, baseUrl, query, isHttps };
+  const cart = readCart(req);
+  const ctx = { user, session, csrf, baseUrl, query, isHttps, cart };
   if (user && user.role === 'admin') user.__csrf = csrf; // برای فرم‌های ادمین
 
   const finish = (code, html) => {
@@ -199,7 +202,20 @@ const server = http.createServer(async (req, res) => {
         if (r.error) return finish(200, pub.authForm({ mode: 'setup', error: r.error, csrf, baseUrl, user: null }));
         return handle(r);
       }
+      if (pathname === '/auth/telegram') {
+        const tg = telegramVerify(body);
+        if (!tg) return redirect(res, '/login?err=oauth');
+        return redirect(res, telegramLogin(res, tg, isHttps));
+      }
+      if (pathname === '/forgot') return handle(api.handleForgot(req, res, ctx));
+      if (pathname === '/reset-password') return handle(api.handleResetPassword(req, res, ctx));
       if (pathname === '/login') {
+        if ((req.headers.accept || '').includes('application/json')) {
+          const r = api.handleLogin(req, res, ctx);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(r.error ? { ok: false, error: r.error } : { ok: true, redirect: r.redirect }));
+          return;
+        }
         const r = api.handleLogin(req, res, ctx);
         if (r.error) return finish(200, pub.authForm({ mode: 'login', error: r.error, csrf, baseUrl, user: null }));
         return handle(r);
@@ -270,6 +286,7 @@ const server = http.createServer(async (req, res) => {
       if ((m = pathname.match(/^\/admin\/products\/(\d+)\/delete$/))) return handle(admin.handleProductDelete(req, res, ctx, parseInt(m[1], 10)));
       if ((m = pathname.match(/^\/admin\/orders\/(\d+)\/status$/))) return handle(admin.handleOrderStatus(req, res, ctx, parseInt(m[1], 10)));
       if ((m = pathname.match(/^\/admin\/customers\/(\d+)\/toggle$/))) return handle(admin.handleCustomerToggle(req, res, ctx, parseInt(m[1], 10)));
+      if ((m = pathname.match(/^\/admin\/customers\/(\d+)\/reset-pass$/))) return handle(admin.handleCustomerResetPass(req, res, ctx, parseInt(m[1], 10)));
       if ((m = pathname.match(/^\/admin\/comments\/(\d+)\/(approve|reject|delete)$/))) return handle(admin.handleCommentAction(req, res, ctx, parseInt(m[1], 10), m[2]));
       if (pathname === '/admin/coupons/new') return handle(admin.handleCouponCreate(req, res, ctx));
       if ((m = pathname.match(/^\/admin\/coupons\/(\d+)\/(toggle|delete)$/))) {
@@ -278,6 +295,36 @@ const server = http.createServer(async (req, res) => {
       if ((m = pathname.match(/^\/admin\/app-projects\/(\d+)\/status$/))) return handle(admin.handleProjectStatus(req, res, ctx, parseInt(m[1], 10)));
       if ((m = pathname.match(/^\/admin\/app-projects\/(\d+)\/preview$/))) return handle(admin.handleProjectPreview(req, res, ctx, parseInt(m[1], 10)));
       if (pathname === '/admin/settings/save') return handle(admin.handleSettingsSave(req, res, ctx));
+
+      // ═══ سبد سروری (حتی بدون جاوااسکریپت) ═══
+      const cartJsonRes = items => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(cartJson(items))); };
+      if (pathname === '/cart/add') {
+        const items = cartAdd(cart, body.productId ?? body.id, body.qty);
+        writeCart(res, items);
+        if ((req.headers.accept || '').includes('application/json') || body.json) return cartJsonRes(items);
+        return redirect(res, '/cart');
+      }
+      if (pathname === '/cart/remove') {
+        const id = parseInt(body.productId ?? body.id, 10);
+        const items = cart.filter(x => x.id !== id);
+        writeCart(res, items);
+        if ((req.headers.accept || '').includes('application/json') || body.json) return cartJsonRes(items);
+        return redirect(res, '/cart');
+      }
+      if (pathname === '/cart/qty') {
+        const id = parseInt(body.productId ?? body.id, 10);
+        const qty = Math.max(1, Math.min(10, parseInt(body.qty, 10) || 1));
+        const items = cart.map(x => x.id === id ? { ...x, qty } : x);
+        writeCart(res, items);
+        if ((req.headers.accept || '').includes('application/json') || body.json) return cartJsonRes(items);
+        return redirect(res, '/cart');
+      }
+      if (pathname === '/cart/sync') { // مهاجرت یک‌باره از localStorage قدیمی
+        let items = [...cart];
+        for (const it of (Array.isArray(body.items) ? body.items : [])) items = cartAdd(items, it.id, it.qty ? it.qty - 1 : 0);
+        writeCart(res, items);
+        return cartJsonRes(items);
+      }
 
       return finish(404, notFoundPage());
     }
@@ -292,6 +339,15 @@ const server = http.createServer(async (req, res) => {
         if (findOne('users', u => u.role === 'admin')) return redirect(res, '/login');
         return finish(200, pub.authForm({ mode: 'setup', csrf, baseUrl, needsSetup: true, user: null }));
       }
+      // ═══ ورود اجتماعی ═══
+      const cookieState = ((req.headers.cookie || '').match(/tl_oauth_state=([a-f0-9]+)/) || [])[1];
+      if (pathname === '/auth/github') return redirect(res, githubStart(req, res));
+      if (pathname === '/auth/github/callback') return githubCallback(req, res, query, cookieState).then(to => redirect(res, to));
+      if (pathname === '/auth/google') return redirect(res, googleStart(req, res));
+      if (pathname === '/auth/google/callback') return googleCallback(req, res, query, cookieState).then(to => redirect(res, to));
+      if (pathname === '/forgot') return finish(200, pub.forgotForm({ csrf, query }));
+      if ((m = pathname.match(/^\/reset-password$/)) && query.token) return finish(200, pub.resetForm({ csrf, token: query.token, query }));
+
       if (pathname === '/login') {
         if (user) return redirect(res, user.role === 'admin' ? '/admin' : '/account');
         return finish(200, pub.authForm({ mode: 'login', csrf, baseUrl, user: null }));
@@ -316,6 +372,7 @@ const server = http.createServer(async (req, res) => {
         return finish(200, pub.productPage(req, res, { ...ctx, ok, error }));
       }
       if (pathname === '/cart') return finish(200, pub.cartPage(req, res, ctx));
+      if (pathname === '/cart/summary') { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(cartJson(cart))); return; }
       if (pathname === '/checkout') return finish(200, shop.renderCheckout(req, res, ctx));
       if (pathname === '/payment/callback') {
         // بازگشت از زرین‌پال: Authority + Status (مبلغ از سرور خوانده می‌شود، نه از کال‌بک)

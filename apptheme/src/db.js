@@ -96,6 +96,7 @@ export function migrate(d) {
   d.categories = d.categories || [];
   if (!d.meta.secret) d.meta.secret = randomToken(24);
   d.messages = d.messages || [];
+  d.passwordResets = d.passwordResets || [];
   d.projects = d.projects || [];
   d.verifications = d.verifications || [];
   d.licenses = d.licenses || [];
@@ -107,6 +108,7 @@ export function migrate(d) {
   }
   d.settings = d.settings || {};
   d.settings.occasions = d.settings.occasions || {};
+  d.settings.oauth = d.settings.oauth || {};
   d.settings.smtp = d.settings.smtp || { host: '', port: 587, user: '', pass: '', from: '' };
   for (const u of d.users || []) {
     if (u.mobile === undefined) u.mobile = '';

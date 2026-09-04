@@ -1,6 +1,6 @@
 // ─── API و هندلرهای فرم: احراز هویت (ایمیل/موبایل)، لایک، کامنت ───
-import { findOne, insert, findMany, removeOne } from '../db.js';
-import { verifyPassword, hashPassword, rateLimit, validName, validPassword, cleanText } from '../security.js';
+import { findOne, insert, findMany, removeOne, updateOne, getDb, persist } from '../db.js';
+import { verifyPassword, hashPassword, rateLimit, validName, validPassword, cleanText, randomToken } from '../security.js';
 import { isEmail, normalizeMobile } from '../util.js';
 import { login, logout, csrfOk } from '../auth.js';
 import { ensureVerification, sendMail, verificationMessage } from '../shop.js';
@@ -127,7 +127,7 @@ export function handleLike(req, res, { user, session, productId }) {
 }
 
 // ─── حذف خودکار حساب‌های تأییدنشده (هر ساعت) ───
-import { getDb, persist } from '../db.js';
+
 export function purgeUnverified() {
   const db = getDb();
   const deadline = Date.now() - 7 * 86400000;
@@ -142,4 +142,51 @@ export function purgeUnverified() {
 
 export function health(req, res) {
   return json(res, 200, { ok: true, name: 'apptheme', time: new Date().toISOString() });
+}
+
+// ═══ فراموشی رمز — ۵ کانال (ایمیل واقعی + بقیه: تیکت به پشتیبانی) ═══
+export function handleForgot(req, res, { body, session, csrf, baseUrl }) {
+  if (!csrfOk(req, session || csrf, body)) return { redirect: '/forgot' };
+  if (!rateLimit(`forgot:${clientIp(req)}`, 5, 15 * 60_000)) return { error: 'تلاش بیش از حد. بعداً دوباره امتحان کنید.' };
+  const ch = String(body.ch || 'email');
+  const identifier = String(body.identifier || '').trim();
+  if (!identifier) return { error: 'شناسه را وارد کنید.' };
+  const db = getDb();
+
+  if (ch === 'email') {
+    const email = identifier.toLowerCase();
+    const user = findOne('users', u => u.email === email);
+    // همیشه پیام یکسان (افشای وجود حساب ممنوع)
+    if (user) {
+      removeOne('passwordResets', r => r.userId === user.id);
+      const token = randomToken(24);
+      insert('passwordResets', { userId: user.id, token, expiresAt: new Date(Date.now() + 3600_000).toISOString() });
+      sendMail(email, 'بازیابی رمز عبور — اپ‌تم',
+        `سلام ${user.name}!\n\nبرای تعیین رمز جدید روی لینک زیر بزنید (۱ ساعت اعتبار):\n${baseUrl}/reset-password?token=${token}\n\nاگر شما درخواست نداده‌اید این پیام را نادیده بگیرید.`);
+    }
+    return { redirect: '/forgot?ch=email&sent=1' };
+  }
+
+  // موبایل/تلگرام/بله/روبیکا → تیکت مستقیم برای ادمین
+  const labels = { mobile: '📱 موبایل', telegram: '✈️ تلگرام', bale: '💬 بله', rubika: '🟣 روبیکا' };
+  insert('messages', { threadKey: 'u:support', fromUserId: null, fromRole: 'system',
+    body: `🔑 درخواست بازیابی رمز از طریق ${labels[ch] || ch}\nشناسه تماس: ${identifier}\n(از پنل ادمین → کاربران، بعد از احراز هویت، رمز جدید تعیین کنید)`,
+    readByAdmin: false, readByUser: true, createdAt: new Date().toISOString() });
+  db.meta = db.meta || {};
+  persist();
+  return { redirect: `/forgot?ch=${ch}&sent=1` };
+}
+
+export function handleResetPassword(req, res, { body, session, csrf }) {
+  if (!csrfOk(req, session || csrf, body)) return { redirect: '/login' };
+  const token = String(body.token || '');
+  const r = findOne('passwordResets', x => x.token === token);
+  if (!r || new Date(r.expiresAt) < new Date()) return { redirect: '/reset-password?token=x&invalid=1' };
+  const password = validPassword(body.password);
+  if (!password) return { error: 'رمز باید حداقل ۸ کاراکتر باشد.' };
+  updateOne('users', u => u.id === r.userId, { passwordHash: hashPassword(password) });
+  removeOne('passwordResets', x => x.id === r.id);
+  const user = findOne('users', u => u.id === r.userId);
+  login(res, user.id, true);
+  return { redirect: user.role === 'admin' ? '/admin' : '/account?welcome=1' };
 }

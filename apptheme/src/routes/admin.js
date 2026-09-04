@@ -1,5 +1,6 @@
 // ═══ پنل مدیریت — همه بخش‌ها ═══
 import { esc, money, faNum, faDate, faDateTime, slugify, parseMoney } from '../util.js';
+
 import { adminPage } from '../render.js';
 import { findMany, findOne, insert, updateOne, removeOne, getDb, persist, replaceDb } from '../db.js';
 import { login } from '../auth.js';
@@ -9,7 +10,7 @@ import { parsePrompt, generateFromSpec, generateSpecZip, SPEC_TYPE_LABELS } from
 import { makeZip } from '../zip.js';
 import { PROJECT_STATUS, SPEC_LABELS, POLICY } from '../apporder.js';
 import * as walletMod from '../wallet.js';
-import { cleanText } from '../security.js';
+import { cleanText, randomToken, hashPassword } from '../security.js';
 
 const fa = n => Number(n).toLocaleString('fa-IR');
 
@@ -284,7 +285,7 @@ export function handleOrderStatus(req, res, ctx, id) {
   updateOne('orders', o => o.id === id, patch);
   return { redirect: '/admin/orders' };
 }
-import { randomToken } from '../security.js';
+
 const require_token = () => randomToken(16);
 
 // ═══ مشتریان ═══
@@ -305,14 +306,29 @@ export function customersList(req, res, { user }) {
     <td class="muted small">${faDate(u.createdAt)}</td>
     <td class="ops">
       <a class="btn sm ghost" href="/admin/messages?u=${u.id}">💬</a>
+      <form method="post" action="/admin/customers/${u.id}/reset-pass" data-confirm="رمز جدید تصادفی برای ${esc(u.name)} ساخته شود؟ (به او پیام می‌رسد)" data-ok-text="بله، بساز">
+        <input type="hidden" name="_csrf" value="${user.__csrf}">
+        <button class="btn sm soft" type="submit" title="بازیابی رمز">🔑</button>
+      </form>
       <form method="post" action="/admin/customers/${u.id}/toggle">
         <input type="hidden" name="_csrf" value="${user.__csrf}">
-        <button class="btn sm ${u.active ? 'danger' : 'soft'}" type="submit">${u.active ? 'مسدود' : 'فعال‌سازی'}</button>
+        <button class="btn sm ${u.active ? 'danger' : 'soft'}" type="submit">${u.active ? 'مسدود' : 'فعال'}</button>
       </form>
     </td></tr>`;
   }).join('')}
 </table></div>`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت مشتریان', active: 'customers', body });
+}
+
+export function handleCustomerResetPass(req, res, ctx, id) {
+  const u = findOne('users', x => x.id === id);
+  if (!u) return { redirect: '/admin/customers' };
+  const pass = 'Ap-' + randomToken(4); // رمز خوانا و کوتاه برای اعلام تلفنی/تلگرامی
+  updateOne('users', x => x.id === id, { passwordHash: hashPassword(pass) });
+  insert('messages', { threadKey: 'u:' + id, fromUserId: null, fromRole: 'admin', body: `🔑 رمز جدید شما: ${pass}\nپس از ورود، از «حساب من» رمز را عوض کنید.`, readByAdmin: true, readByUser: false, createdAt: new Date().toISOString() });
+  persist();
+  console.log(`[admin] رمز جدید برای ${u.email}: ${pass}`);
+  return { redirect: `/admin/customers?reset=${id}` };
 }
 
 export function handleCustomerToggle(req, res, ctx, id) {
@@ -901,7 +917,20 @@ ${ok ? '<div class="alert ok">تنظیمات ذخیره شد ✓</div>' : ''}
       </div>
     </div>
   </div>
-  <button class="btn lg" type="submit" style="margin-top:18px">💾 ذخیره تنظیمات</button>
+  <div class="card panel">
+        <h3 style="margin-bottom:6px">🔗 ورود اجتماعی (اختیاری)</h3>
+        <p class="muted small" style="margin-bottom:12px">با پرکردن این مقادیر، دکمه‌های ورود سریع در صفحه ورود فعال می‌شوند. راهنمای ساخت هر کدام در DEPLOY.md</p>
+        <div class="form-grid">
+          <div class="field"><label>GitHub Client ID</label><input class="input" name="oauth_github_id" dir="ltr" value="${esc(db.settings.oauth?.githubId || '')}"></div>
+          <div class="field"><label>GitHub Client Secret</label><input class="input" name="oauth_github_secret" dir="ltr" value="${esc(db.settings.oauth?.githubSecret || '')}"></div>
+          <div class="field"><label>Google Client ID</label><input class="input" name="oauth_google_id" dir="ltr" value="${esc(db.settings.oauth?.googleId || '')}"></div>
+          <div class="field"><label>Google Client Secret</label><input class="input" name="oauth_google_secret" dir="ltr" value="${esc(db.settings.oauth?.googleSecret || '')}"></div>
+          <div class="field"><label>Telegram Bot نام‌کاربری</label><input class="input" name="oauth_telegram_bot" dir="ltr" placeholder="@mybot" value="${esc(db.settings.oauth?.telegramBot || '')}"></div>
+          <div class="field"><label>Telegram Bot Token</label><input class="input" name="oauth_telegram_token" dir="ltr" value="${esc(db.settings.oauth?.telegramToken || '')}"></div>
+        </div>
+        <p class="hint" style="margin-top:8px">آدرس کال‌بک گیت‌هاب/گوگل: <code>${db.meta.siteUrlHint || 'SITE_URL'}/auth/github/callback</code> و <code>SITE_URL/auth/google/callback</code></p>
+      </div>
+      <button class="btn lg" type="submit" style="margin-top:18px">💾 ذخیره تنظیمات</button>
 </form>`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'تنظیمات فروشگاه', active: 'settings', body });
 }
@@ -914,6 +943,11 @@ export function handleSettingsSave(req, res, ctx) {
   db.settings.description = cleanText(body.description, 400);
   db.settings.socials.telegram = cleanText(body.tg, 200);
   db.settings.socials.instagram = cleanText(body.ig, 200);
+  db.settings.oauth = {
+    githubId: String(body.oauth_github_id || '').trim(), githubSecret: String(body.oauth_github_secret || '').trim(),
+    googleId: String(body.oauth_google_id || '').trim(), googleSecret: String(body.oauth_google_secret || '').trim(),
+    telegramBot: String(body.oauth_telegram_bot || '').trim(), telegramToken: String(body.oauth_telegram_token || '').trim(),
+  };
   db.settings.payment.provider = body.payProvider === 'zarinpal' ? 'zarinpal' : 'demo';
   db.settings.payment.merchantId = cleanText(body.merchantId, 100);
   db.settings.payment.sandbox = body.sandbox === 'on';

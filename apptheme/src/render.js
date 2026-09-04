@@ -51,10 +51,10 @@ ${body}
 function navbar(user, active = '') {
   const link = (href, label, key) => `<a href="${href}"${active === key ? ' class="active"' : ''}>${label}</a>`;
   const cartBtn = `
-  <button class="icon-btn" id="cartBtn" aria-label="سبد خرید" onclick="location.href='/cart'">
+  <a class="icon-btn" id="cartBtn" href="/cart" aria-label="سبد خرید" role="button">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
     <span class="cart-count" id="cartCount" hidden>۰</span>
-  </button>`;
+  </a>`;
   const themeBtn = `
   <button class="icon-btn" id="themeToggle" aria-label="تغییر تم">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>

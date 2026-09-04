@@ -1,6 +1,6 @@
 {
   "name": "apptheme",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "اپ‌تم — فروشگاه قالب‌های حرفه‌ای وب | Full-stack template marketplace (zero-dependency Node.js)",
   "type": "module",
   "main": "server.js",

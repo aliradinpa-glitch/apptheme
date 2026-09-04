@@ -52,33 +52,77 @@
 
   // ── سبد خرید (localStorage) ──
   var CART = 'tl_cart';
-  function cart() { try { return JSON.parse(lsGet(CART)) || []; } catch (e) { return []; } }
-  function cartSave(items) { lsSet(CART, JSON.stringify(items)); updateBadge(); }
+  // ═══ سبد خرید سروری (کوکی) — بدون وابستگی به localStorage ═══
+  function api(method, url, body) {
+    return fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) { return r.json(); });
+  }
+  var CART_CSS = '.cart-drawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(380px,92vw);background:var(--card,#fff);z-index:99990;box-shadow:0 0 60px rgba(8,12,32,.3);transform:translateX(115%);transition:.28s;display:flex;flex-direction:column;border-inline-end:1px solid var(--border,#e7eaf4)}.cart-drawer.on{transform:none}.cart-drawer header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#e7eaf4);position:static;background:none}.cart-drawer header b{font-size:1rem}.cart-drawer .cd-items{flex:1;overflow:auto;padding:12px 18px;display:grid;gap:10px;align-content:start}.cart-drawer .cd-it{display:flex;gap:10px;justify-content:space-between;align-items:center;border:1px solid var(--border,#e7eaf4);border-radius:12px;padding:10px 12px}.cart-drawer .cd-it b{font-size:.86rem}.cart-drawer .cd-it small{color:var(--muted,#66708c)}.cart-drawer footer{padding:14px 18px;border-top:1px solid var(--border,#e7eaf4);display:grid;gap:8px}.cart-drawer .cd-total{display:flex;justify-content:space-between;font-weight:700}.cd-x{border:0;background:none;font-size:1.3rem;cursor:pointer;color:inherit}';
+  var st = document.createElement('style'); st.textContent = CART_CSS; document.head.appendChild(st);
+
+  var drawerEl = null;
+  function ensureDrawer() {
+    if (drawerEl) return drawerEl;
+    drawerEl = document.createElement('div');
+    drawerEl.className = 'cart-drawer';
+    drawerEl.setAttribute('role', 'dialog');
+    drawerEl.innerHTML = '<header><b>🛒 سبد خرید شما</b><button class="cd-x" type="button" aria-label="بستن">×</button></header><div class="cd-items"></div><footer><div class="cd-total"><span>جمع:</span><b class="cd-sum">—</b></div><a class="btn lg" style="text-align:center" href="/cart">مشاهده سبد و تسویه</a></footer>';
+    document.body.appendChild(drawerEl);
+    drawerEl.querySelector('.cd-x').addEventListener('click', function () { drawerEl.classList.remove('on'); });
+    document.addEventListener('click', function (e) { if (drawerEl.classList.contains('on') && !drawerEl.contains(e.target) && e.target.id !== 'cartBtn' && !e.target.closest('#cartBtn')) drawerEl.classList.remove('on'); });
+    return drawerEl;
+  }
+  function faN(n) { return Number(n || 0).toLocaleString('fa-IR'); }
   window.tlCart = {
-    add: function (id) {
-      var items = cart();
-      var found = items.filter(function (x) { return String(x.id) === String(id); })[0];
-      if (found) found.qty = (found.qty || 1) + 1; else items.push({ id: String(id), qty: 1 });
-      cartSave(items);
-      window.tlToast('به سبد خرید اضافه شد ✓', 'ok');
+    summary: null,
+    refresh: function () { return api('GET', '/cart/summary').then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); },
+    add: function (id, silent) {
+      return api('POST', '/cart/add', { productId: id }).then(function (d) {
+        window.tlCart.summary = d; updateBadge(d.count);
+        if (!silent) { window.tlToast('به سبد خرید اضافه شد ✓', 'ok'); openDrawer(d); }
+        return d;
+      }).catch(function () { location.href = '/cart'; });
     },
-    remove: function (id) { cartSave(cart().filter(function (x) { return String(x.id) !== String(id); })); },
-    setQty: function (id, qty) {
-      var items = cart();
-      for (var i = 0; i < items.length; i++)
-        if (String(items[i].id) === String(id)) items[i].qty = Math.max(1, Math.min(10, qty || 1));
-      cartSave(items);
-    },
-    items: cart
+    remove: function (id) { return api('POST', '/cart/remove', { productId: id }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); },
+    setQty: function (id, qty) { return api('POST', '/cart/qty', { productId: id, qty: qty }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); }
   };
-  function updateBadge() {
+  function openDrawer(d) {
+    var dr = ensureDrawer();
+    var box = dr.querySelector('.cd-items');
+    box.innerHTML = (d.items || []).map(function (it) {
+      return '<div class="cd-it"><div><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b></div>';
+    }).join('') || '<p class="muted" style="text-align:center;padding:20px">سبد خالی است</p>';
+    dr.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
+    dr.querySelector('footer a.btn').href = d.items && d.items.length ? '/checkout?items=' + d.items.map(function (x) { return x.id; }).join(',') : '/cart';
+    dr.classList.add('on');
+  }
+  function updateBadge(n) {
     var el = document.getElementById('cartCount');
     if (!el) return;
-    var n = cart().reduce(function (s, x) { return s + (x.qty || 1); }, 0);
-    el.hidden = n === 0;
-    el.textContent = n.toLocaleString('fa-IR');
+    el.hidden = !n;
+    el.textContent = faN(n);
   }
-  updateBadge();
+  // بوت: خواندن سبد از سرور + مهاجرت یک‌باره از localStorage قدیمی
+  (function () {
+    var legacy = null;
+    try { legacy = JSON.parse(localStorage.getItem('tl_cart')); } catch (e) {}
+    var boot = legacy && legacy.length
+      ? api('POST', '/cart/sync', { items: legacy }).then(function (d) { try { localStorage.removeItem('tl_cart'); } catch (e) {} return d; })
+      : window.tlCart.refresh();
+    boot.then(function (d) { window.tlCart.summary = d; updateBadge(d.count); }).catch(function () {});
+  })();
+
+  // دکمه سبد در هدر → drawer
+  document.addEventListener('click', function (e) {
+    var cb = e.target.closest('#cartBtn');
+    if (cb) {
+      e.preventDefault();
+      window.tlCart.refresh().then(openDrawer).catch(function () { location.href = '/cart'; });
+    }
+  });
 
   document.addEventListener('click', function (e) {
     var add = e.target.closest('[data-add-to-cart]');
@@ -87,8 +131,7 @@
     var rm = e.target.closest('[data-cart-remove]');
     if (rm) {
       e.preventDefault();
-      window.tlCart.remove(rm.getAttribute('data-cart-remove'));
-      if (window.renderCart) window.renderCart();
+      window.tlCart.remove(rm.getAttribute('data-cart-remove')).then(function () { location.reload(); });
       return;
     }
 

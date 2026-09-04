@@ -277,7 +277,33 @@ ck "admin-guard" "" "$(curl -s -o /dev/null -w "%{redirect_url}" $B/admin/settin
 ck "quote-guard" "/login" "$(curl -s -o /dev/null -w "%{redirect_url}" -X POST $B/admin/app-projects/$APID/quote --data-urlencode "price=1")"
 ck "404" "صفحه پیدا نشد" "$(curl -s $B/xyz)"
 
-# ─── ۱۷. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
+# ─── ۱۷. سبد سروری + فراموشی رمز + ورود اجتماعی ───
+GJ=/tmp/tl-guest-cart.txt; rm -f $GJ
+curl -s -c $GJ -o /dev/null $B/
+ck "cart-add-nojs" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/add -d "productId=1")"
+curl -s -b $GJ -c $GJ -o /dev/null -X POST $B/cart/add -d "productId=4&qty=2"
+ck "cart-page-ssr" "ادامه تسویه و پرداخت" "$(curl -s -b $GJ $B/cart)"
+ck "cart-page-item" "نوین‌شاپ" "$(curl -s -b $GJ $B/cart)"
+ck "cart-summary-json" "\"ok\":true" "$(curl -s -b $GJ $B/cart/summary)"
+ck "cart-remove" "" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/remove -d "productId=4")"
+ck "cart-badge-count" "count" "$(curl -s -b $GJ $B/cart/summary)"
+FJ=/tmp/tl-forgot.txt; rm -f $FJ
+curl -s -c $FJ -o /dev/null $B/
+CRF=$(curl -s -b $FJ -c $FJ $B/register | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+curl -s -b $FJ -c $FJ -o /dev/null -X POST $B/register --data-urlencode "_csrf=$CRF" --data-urlencode "name=کاربر فراموشکار" --data-urlencode "identifier=forgetful@test.ir" --data-urlencode "password=OldPass@1234"
+CF=$(curl -s -b $FJ -c $FJ $B/forgot | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+ck "forgot-email-ok" "sent=1" "$(curl -s -b $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/forgot --data-urlencode "_csrf=$CF" --data-urlencode "ch=email" --data-urlencode "identifier=forgetful@test.ir")"
+ck "forgot-telegram-ticket" "sent=1" "$(curl -s -b $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/forgot --data-urlencode "_csrf=$CF" --data-urlencode "ch=telegram" --data-urlencode "identifier=@tester")"
+RT=$(grep -a "reset-password?token=" /tmp/tl-test.log | grep -o 'token=[a-f0-9]*' | tail -1 | cut -d= -f2)
+ck "forgot-token-issued" "yes" "$([ -n "$RT" ] && echo yes)"
+CF2=$(curl -s -b $FJ -c $FJ "$B/reset-password?token=$RT" | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}')
+ck "reset-newpass-login" "/account" "$(curl -s -b $FJ -c $FJ -o /dev/null -w "%{redirect_url}" -X POST $B/reset-password --data-urlencode "_csrf=$CF2" --data-urlencode "token=$RT" --data-urlencode "password=NewPass@123")"
+ck "oauth-off-guard" "err=oauth" "$(curl -s -o /dev/null -w "%{redirect_url}" $B/auth/github)"
+ck "login-page-tabs" "auth-tabs" "$(curl -s $B/login)"
+ck "login-page-oauth-buttons" "oauth-btn" "$(curl -s $B/login)"
+ck "catalog-chips" "chip-on" "$(curl -s $B/templates)"
+
+# ─── ۱۸. سینک ابری دیتابیس (گیت‌هاب ساختگی) ───
 for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
   pid=$(basename $(dirname $p)); [ "$pid" = "$$" ] && continue
   cmd=$(tr '\0' ' ' < $p 2>/dev/null)
@@ -285,6 +311,30 @@ for p in $(ls /proc/[0-9]*/cmdline 2>/dev/null); do
 done
 sleep 1
 node -e "const fs=require('fs');const db={meta:{secret:'cs123'},users:[],sessions:[],orders:[],licenses:[],likes:[],comments:[],messages:[],projects:[],transactions:[],withdrawals:[],verifications:[],coupons:[],generatedTemplates:[],categories:[{id:1,slug:'shop',name:'فروشگاهی',icon:'🛒'}],products:[{id:1,slug:'cloud-template',title:'قالب ابری',desc:'از گیت‌هاب اومدم',price:500000,categoryIds:[1],category:'shop',framework:'html',published:true,featured:true,likes:0,downloads:0,screens:[],tags:[],createdAt:'2026-09-01T00:00:00.000Z'}],settings:{siteName:'اپ‌تم',occasions:{},smtp:{host:'',port:587,user:'',pass:'',from:''},payment:{provider:'demo',merchantId:'',sandbox:false}}};fs.writeFileSync('/tmp/mockgh-db.json',JSON.stringify(db,null,1));"
+cat > /tmp/mockgh.js <<'MOCK'
+import http from 'node:http';
+import fs from 'node:fs';
+let sha = 'deadbeef';
+http.createServer((req, res) => {
+  const body = [];
+  req.on('data', c => body.push(c));
+  req.on('end', () => {
+    res.setHeader('content-type', 'application/json');
+    if (req.method === 'GET') {
+      const raw = (req.headers.accept || '').includes('raw');
+      const dbb = fs.readFileSync('/tmp/mockgh-db.json');
+      res.end(raw ? dbb : JSON.stringify({ sha, content: dbb.toString('base64') }));
+    } else if (req.method === 'PUT') {
+      const payload = JSON.parse(Buffer.concat(body).toString());
+      sha = 'sha' + Date.now();
+      const decoded = Buffer.from(payload.content, 'base64');
+      fs.writeFileSync('/tmp/mockgh-put.json', decoded);
+      fs.writeFileSync('/tmp/mockgh-db.json', decoded);
+      res.end(JSON.stringify({ commit: { sha } }));
+    } else { res.statusCode = 404; res.end('{}'); }
+  });
+}).listen(3290, () => console.log('mock ok'));
+MOCK
 node /tmp/mockgh.js > /tmp/mockgh.log 2>&1 &
 MOCKPID=$!
 sleep 0.8
