@@ -1,0 +1,14 @@
+# دیپلوی رایگان روی render.com — فقط این فایل + گیت‌هاب کافیه
+services:
+  - type: web
+    name: apptheme
+    runtime: node
+    plan: free
+    buildCommand: echo "بدون نیاز به بیلد — صفر وابستگی"
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: SITE_URL        # بعد از ساخت، آدرس واقعی را بگذارید: https://apptheme.onrender.com
+        sync: false
+      - key: NODE_VERSION
+        value: "20"

@@ -1,0 +1,15 @@
+{
+  "name": "apptheme",
+  "version": "1.2.0",
+  "description": "اپ‌تم — فروشگاه قالب‌های حرفه‌ای وب | Full-stack template marketplace (zero-dependency Node.js)",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
