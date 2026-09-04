@@ -1,0 +1,11 @@
+git status
+git add .
+git commit -m "update to v1.9"
+git push
+
+
+
+git add -A
+git commit -m "update to v1.9"
+git remote add origin https://github.com/aliradinpa-glitch/apptheme.git
+git push -u origin main
