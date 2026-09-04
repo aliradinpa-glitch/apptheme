@@ -119,24 +119,43 @@ ${(() => {
 
 // ═══ قالب‌ها ═══
 
-// ─── صفحه‌بندی مشترک لیست‌های ادمین ───
+// ─── صفحه‌بندی مشترک لیست‌های ادمین (نسخه نئونی با حذف هوشمند) ───
 function paginate(arr, query, per = 15) {
   const pages = Math.max(1, Math.ceil(arr.length / per));
   const cur = Math.min(Math.max(1, parseInt(query?.page) || 1), pages);
-  return { slice: arr.slice((cur - 1) * per, cur * per), cur, pages };
+  const from = arr.length ? (cur - 1) * per + 1 : 0;
+  const to = Math.min(cur * per, arr.length);
+  return { slice: arr.slice((cur - 1) * per, cur * per), cur, pages, from, to, total: arr.length };
 }
-function pagerHtml(cur, pages, basePath) {
+function pagerHtml(cur, pages, basePath, info = {}) {
   if (pages <= 1) return '';
-  let h = '<div class="pager" style="margin-top:16px">';
-  if (cur > 1) h += `<a class="btn ghost sm" href="${basePath}?page=${cur - 1}">قبلی →</a>`;
-  for (let i = 1; i <= pages; i++) h += `<a class="btn ${i === cur ? '' : 'ghost'} sm" href="${basePath}?page=${i}">${faNum(i)}</a>`;
-  if (cur < pages) h += `<a class="btn ghost sm" href="${basePath}?page=${cur + 1}">← بعدی</a>`;
-  return h + '</div>';
+  const qs = p => `${basePath}?page=${p}`;
+  const btn = (href, label, cls, curPage, title) => `<a class="btn sm ${cls}" href="${href}" ${curPage ? 'aria-current="page"' : ''} ${title ? `title="${title}"` : ''}>${label}</a>`;
+  let nums = [];
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - cur) <= 1) nums.push(i);
+    else if (nums[nums.length - 1] !== '…') nums.push('…');
+  }
+  const numHtml = nums.map(n => n === '…'
+    ? '<span class="pg-dots">•••</span>'
+    : btn(qs(n), faNum(n), n === cur ? 'pg-num' : 'ghost pg-num', n === cur)).join('');
+  const infoLine = (info.total)
+    ? `<span class="pg-info">نمایش ${faNum(info.from)} تا ${faNum(info.to)} از ${faNum(info.total)} مورد — صفحه ${faNum(cur)} از ${faNum(pages)}</span>`
+    : '';
+  return `<div class="pager" style="margin-top:18px">
+    ${cur > 1 ? btn(qs(1), '« اول', 'ghost') : ''}
+    ${cur > 1 ? btn(qs(cur - 1), '→ قبلی', 'ghost') : ''}
+    ${numHtml}
+    ${cur < pages ? btn(qs(cur + 1), 'بعدی ←', 'ghost') : ''}
+    ${cur < pages ? btn(qs(pages), 'آخر »', 'ghost') : ''}
+    ${infoLine}
+  </div>`;
 }
 
 export function productsList(req, res, { user, query }) {
   const products = [...getDb().products].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const { slice, cur, pages } = paginate(products, query);
+  const pg = paginate(products, query);
+  const { slice, cur, pages } = pg;
   const body = `
 <div class="between" style="margin-bottom:18px">
   <span class="muted small">${fa(products.length)} قالب</span>
@@ -156,7 +175,7 @@ export function productsList(req, res, { user, query }) {
       <form method="post" action="/admin/products/${p.id}/delete" data-confirm="قالب «${esc(p.title)}» برای همیشه حذف شود؟" data-ok-text="بله، حذف کن"><input type="hidden" name="_csrf" value="${user.__csrf}"><button class="btn sm danger" type="submit">🗑</button></form>
     </td>
   </tr>`).join('')}
-</table></div>${pagerHtml(cur, pages, '/admin/products')}`;
+</table></div>${pagerHtml(cur, pages, '/admin/products', pg)}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت قالب‌ها', active: 'products', body });
 }
 
@@ -241,7 +260,8 @@ export function handleProductDelete(req, res, ctx, id) {
 // ═══ سفارش‌ها ═══
 export function ordersList(req, res, { user, query }) {
   const orders = [...getDb().orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const { slice, cur, pages } = paginate(orders, query);
+  const pg = paginate(orders, query);
+  const { slice, cur, pages } = pg;
   const body = `
 <div class="table-wrap"><table class="tbl">
   <tr><th>کد</th><th>مشتری</th><th>قالب‌ها</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th><th>تغییر وضعیت</th></tr>
@@ -265,7 +285,7 @@ export function ordersList(req, res, { user, query }) {
       </form>
     </td></tr>`;
   }).join('')}
-</table></div>${pagerHtml(cur, pages, '/admin/orders')}`;
+</table></div>${pagerHtml(cur, pages, '/admin/orders', pg)}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت سفارش‌ها', active: 'orders', body });
 }
 
@@ -289,13 +309,15 @@ export function handleOrderStatus(req, res, ctx, id) {
 const require_token = () => randomToken(16);
 
 // ═══ مشتریان ═══
-export function customersList(req, res, { user }) {
+export function customersList(req, res, { user, query }) {
   const customers = findMany('users', u => u.role === 'customer').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const pg = paginate(customers, query, 12);
+  const { slice, cur, pages } = pg;
   const body = `
 <div class="alert info">⚠️ حساب‌های «تأییدنشده» که ایمیل‌شان را فعال نکرده باشند، ۷ روز پس از ثبت‌نام به‌صورت خودکار حذف می‌شوند (قوانین سایت).</div>
 <div class="table-wrap"><table class="tbl">
   <tr><th>مشتری</th><th>موبایل</th><th>وضعیت ایمیل</th><th>سفارش‌ها</th><th>عضویت</th><th>عملیات</th></tr>
-  ${customers.map(u => {
+  ${slice.map(u => {
     const orders = findMany('orders', o => o.userId === u.id && o.status === 'paid');
     const days = Math.max(0, 7 - Math.floor((Date.now() - new Date(u.createdAt)) / 86400000));
     return `<tr class="${u.active ? '' : 'inactive-row'}">
@@ -316,7 +338,7 @@ export function customersList(req, res, { user }) {
       </form>
     </td></tr>`;
   }).join('')}
-</table></div>`;
+</table></div>${pagerHtml(cur, pages, '/admin/customers', pg)}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'مدیریت مشتریان', active: 'customers', body });
 }
 
@@ -437,12 +459,14 @@ export function handleCouponDelete(req, res, ctx, id) {
 }
 
 // ═══ پروژه‌های اپ ═══
-export function appProjectsList(req, res, { user }) {
+export function appProjectsList(req, res, { user, query }) {
   const projects = [...getDb().projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const pg = paginate(projects, query, 12);
+  const { slice, cur, pages } = pg;
   const body = `
 <div class="table-wrap"><table class="tbl">
   <tr><th>کد</th><th>مشتری</th><th>توصیف</th><th>برآورد</th><th>پرداختی</th><th>پیشرفت</th><th>وضعیت</th><th></th></tr>
-  ${projects.map(p => {
+  ${slice.map(p => {
     const u = findOne('users', x => x.id === p.userId);
     const st = PROJECT_STATUS[p.status] || {};
     const paid = (p.payments || []).reduce((s, x) => s + x.amount, 0);
@@ -460,7 +484,7 @@ export function appProjectsList(req, res, { user }) {
     </td>
   </tr>`;
   }).join('') || '<tr><td colspan="8" class="center muted">هنوز سفارش اپی ثبت نشده است.</td></tr>'}
-</table></div>`;
+</table></div>${pagerHtml(cur, pages, '/admin/app-projects', pg)}`;
   return adminPage({ user, csrf: user.__csrf || '', title: 'سفارش‌های اپلیکیشن', active: 'app-projects', body });
 }
 

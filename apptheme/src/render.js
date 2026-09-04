@@ -15,10 +15,10 @@ function baseHtml({ title, desc, url = '', body, extraHead = '', adminMode = fal
     : '';
   const csrfMeta = csrf ? `<meta name="csrf" content="${esc(csrf)}">` : '';
   const pwaMeta = adminMode ? '' : `<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#6d5ef2">
+<meta name="theme-color" content="#0b0f24">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="اپ‌تم">
 <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">`;
   return `<!DOCTYPE html>
@@ -45,49 +45,63 @@ ${extraHead}
 ${jsonldTags}
 </head>
 <body${adminMode ? ' class="admin-body"' : ''}>
+<div class="bg-fx" aria-hidden="true"></div>
 ${body}
 </body>
 </html>`;
 }
 
+// ═══ آیکون‌ها ═══
+const I = {
+  sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>',
+  moon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  cart: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+  install: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>',
+  burger: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
+  bell: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+  plus: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  store: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l1.5-5h15L21 9M3 9h18M4 9v11h16V9M9 20v-6h6v6"/></svg>',
+  exit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+  user: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>',
+  menu: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
+};
+
 // ─── ناوبار فروشگاه ───
-function navbar(user, active = '') {
-  const link = (href, label, key) => `<a href="${href}"${active === key ? ' class="active"' : ''}>${label}</a>`;
-  const cartBtn = `
-  <a class="icon-btn" id="cartBtn" href="/cart" aria-label="سبد خرید" role="button">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-    <span class="cart-count" id="cartCount" hidden>۰</span>
-  </a>`;
-  const themeBtn = `
-  <button class="icon-btn" id="themeToggle" aria-label="تغییر تم">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-  </button>`;
+function navbar(user, active = '', csrf = '') {
+  const link = (href, label, key, cls = '') => `<a href="${href}" class="${cls}${active === key ? ' active' : ''}">${label}</a>`;
   const authArea = user
-    ? `<a class="btn sm ghost" href="/account">حساب من</a>
-       ${user.role === 'admin' ? '<a class="btn sm soft" href="/admin">پنل مدیریت</a>' : ''}`
+    ? `<div class="user-chip" id="userChip" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+        <span class="avatar">${esc((user.name || 'ا').trim().charAt(0))}</span>
+        <span class="uname">${esc(user.name || 'کاربر')}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        <div class="user-menu" id="userMenu" role="menu">
+          <a href="/account" role="menuitem">${I.user} حساب من</a>
+          <a href="/account" role="menuitem">📦 سفارش‌ها و دانلودها</a>
+          <a href="/account/wallet" role="menuitem">💳 کیف پول</a>
+          <a href="/account/messages" role="menuitem">💬 پیام با پشتیبانی</a>
+          ${user.role === 'admin' ? `<a href="/admin" role="menuitem">🛡️ پنل مدیریت</a>` : ''}
+          <form method="post" action="/logout"><input type="hidden" name="_csrf" value="${esc(csrf || '')}"><button type="submit" role="menuitem" style="color:var(--err)">${I.exit} خروج از حساب</button></form>
+        </div>
+      </div>`
     : `<a class="btn sm ghost" href="/login" data-auth="login">ورود</a>
-       <a class="btn sm" href="/register" data-auth="register">ثبت‌نام</a>`;
+       <a class="btn sm" href="/register" data-auth="register">ثبت‌نام ✨</a>`;
   return `
 <header class="navbar">
   <div class="container inner">
-    <a class="logo" href="/"><span class="mark">پ</span>اپ‌تم</a>
+    <a class="logo" href="/"><span class="mark">پ</span><span>اپ‌تم<span class="tag">بازار قالب‌های حرفه‌ای</span></span></a>
     <nav class="nav-links" id="navLinks">
-      ${link('/', 'خانه', 'home')}
-      ${link('/templates', 'قالب‌ها', 'templates')}
-      ${link('/apps', 'سفارش اپ اندروید 🤖', 'apps')}
-      ${link('/#why', 'چرا اپ‌تم؟', 'why')}
-      ${link('/#comments', 'نظرات', 'comments')}
+      ${link('/', '🏠 خانه', 'home')}
+      ${link('/templates', '🧩 قالب‌ها', 'templates')}
+      ${link('/apps', '🤖 سفارش اپ اندروید', 'apps')}
+      ${link('/#why', '⚡ چرا اپ‌تم؟', 'why')}
+      ${link('/#comments', '💬 نظرات', 'comments')}
     </nav>
     <div class="nav-actions">
-      ${themeBtn}
-      <button class="icon-btn" id="installBtn" hidden aria-label="نصب اپ موبایل" title="نصب اپ موبایل 📱">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-      </button>
-      ${cartBtn}
+      <button class="icon-btn" id="themeToggle" aria-label="تغییر تم" title="روشن/تاریک">${I.sun}</button>
+      <button class="icon-btn" id="installBtn" hidden aria-label="نصب اپ موبایل" title="نصب اپ موبایل 📱">${I.install}</button>
+      <a class="icon-btn" id="cartBtn" href="/cart" aria-label="سبد خرید" role="button">${I.cart}<span class="cart-count" id="cartCount" hidden>۰</span></a>
       ${authArea}
-      <button class="icon-btn hamburger" id="hamburger" aria-label="منو">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
+      <button class="icon-btn hamburger" id="hamburger" aria-label="منو">${I.burger}</button>
     </div>
   </div>
 </header>`;
@@ -101,7 +115,7 @@ function footer() {
   <div class="container inner">
     <div>
       <a class="logo" href="/"><span class="mark">پ</span>اپ‌تم</a>
-      <p class="muted small" style="margin-top:12px; max-width:22rem;">بازار قالب‌های حرفه‌ای وب — خرید با اطمینان، دانلود آنی و پشتیبانی واقعی. تمام قالب‌ها راست‌چین و بهینه برای سئو هستند.</p>
+      <p class="muted small" style="margin-top:14px; max-width:22rem;">بازار قالب‌های حرفه‌ای وب — خرید با اطمینان، دانلود آنی و پشتیبانی واقعی. تمام قالب‌ها راست‌چین و بهینه برای سئو هستند.</p>
       <div class="socials" style="margin-top:16px;">
         <a href="#" aria-label="تلگرام"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.5l-.38 5.3c.55 0 .79-.24 1.08-.52l2.6-2.48 5.38 3.94c.99.55 1.69.26 1.96-.9L23.5 4.6c.32-1.45-.52-2.02-1.48-1.66L1.7 10.9c-1.42.55-1.4 1.34-.24 1.7l5.2 1.62L18.7 6.8c.57-.38 1.09-.17.66.2L9.04 15.5z"/></svg></a>
         <a href="#" aria-label="اینستاگرام"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" stroke="none"/></svg></a>
@@ -157,11 +171,11 @@ function verifyBanner(user, csrf) {
 // ─── صفحه فروشگاه ───
 export function page(opts) {
   const { user, active = '' } = opts;
-  const body = navbar(user, active) + verifyBanner(user, opts.csrf) + `<main>${opts.body}</main>` + footer() + (user ? '' : authModalHtml(opts.csrf));
+  const body = navbar(user, active, opts.csrf) + verifyBanner(user, opts.csrf) + `<main>${opts.body}</main>` + footer() + (user ? '' : authModalHtml(opts.csrf));
   return baseHtml({ ...opts, body, csrf: opts.csrf });
 }
 
-// ═══ مودال ورود/ثبت‌نام (روی هر صفحه، بدون رفت‌وبرگشت) ═══
+// ═══ مودال ورود/ثبت‌نام حرفه‌ای (روی هر صفحه، بدون رفت‌وبرگشت) ═══
 function authModalHtml(csrf) {
   const o = (getDb().settings.oauth) || {};
   const gh = o.githubId && o.githubSecret, gg = o.googleId && o.googleSecret, tg = o.telegramBot && o.telegramToken;
@@ -173,7 +187,10 @@ function authModalHtml(csrf) {
   <div class="tl-ov" data-close-auth></div>
   <div class="tl-box auth-box">
     <button class="auth-x" type="button" data-close-auth aria-label="بستن">×</button>
-    <div class="logo" style="margin-bottom:8px"><span class="mark">پ</span>اپ‌تم</div>
+    <div style="text-align:center; margin-bottom:6px">
+      <div class="logo" style="justify-content:center; margin-bottom:4px"><span class="mark">پ</span>اپ‌تم</div>
+      <p class="muted small">به بازار قالب‌های حرفه‌ای خوش آمدید ✨</p>
+    </div>
     <div class="auth-tabs" id="authTabs">
       <a href="/login" class="on" data-tab="login">ورود</a>
       <a href="/register" data-tab="register">ثبت‌نام</a>
@@ -182,8 +199,8 @@ function authModalHtml(csrf) {
       <input type="hidden" name="_csrf" value="${esc(csrf)}">
       <input class="input" name="identifier" required dir="ltr" placeholder="ایمیل یا شماره موبایل" autocomplete="username">
       <input class="input" type="password" name="password" required minlength="8" dir="ltr" placeholder="رمز عبور" autocomplete="current-password">
-      <button class="btn lg" type="submit">ورود به حساب</button>
-      <a class="small" href="/forgot" style="color:var(--primary)">فراموشی رمز عبور؟ 🔑</a>
+      <button class="btn lg" type="submit">ورود به حساب 🚀</button>
+      <a class="small" href="/forgot" style="color:var(--primary);text-align:center">فراموشی رمز عبور؟ 🔑</a>
     </form>
     <form method="post" action="/register" id="authFormReg" class="auth-f" hidden>
       <input type="hidden" name="_csrf" value="${esc(csrf)}">
@@ -195,66 +212,122 @@ function authModalHtml(csrf) {
     <div class="oauth-sep"><span>یا ورود سریع با</span></div>
     <div class="oauth-row">
       ${ob(gh, '/auth/github', '🐙 گیت‌هاب', 'github')}
-      ${ob(gg, '/auth/google', '🔴 گوگل (جیمیل)', 'google')}
+      ${ob(gg, '/auth/google', '🔴 گوگل', 'google')}
       ${ob(tg, '/auth/telegram', '✈️ تلگرام', 'telegram')}
       <a class="oauth-btn off" href="/login" data-needs-setup="bale">💬 بله</a>
       <a class="oauth-btn off" href="/login" data-needs-setup="rubika">🟣 روبیکا</a>
     </div>
-    <p class="hint" style="margin-top:10px">با ورود/ثبت‌نام، <a href="/terms" style="color:var(--primary)">قوانین</a> را می‌پذیرید.</p>
+    <p class="hint" style="margin-top:12px;text-align:center">با ورود/ثبت‌نام، <a href="/terms" style="color:var(--primary)">قوانین</a> را می‌پذیرید.</p>
   </div>
 </div>`;
 }
 
-// ─── پوسته ادمین ───
+// ═══ پوسته ادمین ═══
 export function adminPage({ user, title, active = '', body, desc = '', csrf = '' }) {
-  const menu = [
-    ['/admin', 'داشبورد', 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z'],
-    ['/admin/products', 'قالب‌ها', 'M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z'],
-    ['/admin/orders', 'سفارش‌ها', 'M6 2h12l2 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7zM8 2v4h8V2'],
-    ['/admin/customers', 'مشتریان', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm13 18v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
-    ['/admin/comments', 'نظرات', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
-    ['/admin/coupons', 'کدهای تخفیف', 'M20 12l-8 8-4-4 8-8zM6 18l-2-2M9 21l2-2'],
-    ['/admin/app-projects', 'سفارش‌های اپ 🤖', 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 16h4M12 6v6m-3 0h6'],
-    ['/admin/generator', 'قالب‌ساز هوشمند ⭐', 'M12 2l2.4 4.9L20 9.5l-4 3.9.9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-3.9 5.6-2.6z'],
-    ['/admin/messages', 'پیام‌ها', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
-    ['/admin/withdrawals', 'برداشت‌ها 💸', 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
-    ['/admin/settings', 'تنظیمات', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-3a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 2h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 1 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 22h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z'],
+  // ─── منو با گروه‌بندی ───
+  const groups = [
+    ['مدیریت', [
+      ['/admin', 'داشبورد', 'داشبورد', 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z'],
+    ]],
+    ['فروشگاه', [
+      ['/admin/products', 'قالب‌ها', 'products', 'M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z'],
+      ['/admin/orders', 'سفارش‌ها', 'orders', 'M6 2h12l2 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7zM8 2v4h8V2'],
+      ['/admin/customers', 'مشتریان', 'customers', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm13 18v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+      ['/admin/comments', 'نظرات', 'comments', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+      ['/admin/coupons', 'کدهای تخفیف', 'coupons', 'M20 12l-8 8-4-4 8-8zM6 18l-2-2M9 21l2-2'],
+    ]],
+    ['سرویس‌ها', [
+      ['/admin/generator', 'قالب‌ساز هوشمند', 'generator', 'M12 2l2.4 4.9L20 9.5l-4 3.9.9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-3.9 5.6-2.6z'],
+      ['/admin/app-projects', 'سفارش‌های اپ', 'app-projects', 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 16h4M12 6v6m-3 0h6'],
+    ]],
+    ['ارتباطات و مالی', [
+      ['/admin/messages', 'پیام‌ها', 'messages', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+      ['/admin/withdrawals', 'برداشت‌ها', 'withdrawals', 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
+    ]],
+    ['سیستم', [
+      ['/admin/settings', 'تنظیمات', 'settings', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-3a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 2h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 1 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 22h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z'],
+    ]],
   ];
+
   const pendingComments = findMany('comments', c => c.status === 'pending').length;
   const unreadMsgs = findMany('messages', m => m.fromRole === 'user' && !m.readByAdmin).length;
   const submittedProjects = findMany('projects', p => p.status === 'submitted').length;
   const pendingWds = findMany('withdrawals', w => w.status === 'processing').length;
+  const unverifiedUsers = findMany('users', u => u.role === 'customer' && !u.verified).length;
+  const notifTotal = pendingComments + unreadMsgs + submittedProjects + pendingWds + unverifiedUsers;
+
+  const badgeFor = key => {
+    if (key === 'comments' && pendingComments) return `<span class="badge err">${pendingComments}</span>`;
+    if (key === 'messages' && unreadMsgs) return `<span class="badge err">${unreadMsgs}</span>`;
+    if (key === 'app-projects' && submittedProjects) return `<span class="badge warn">${submittedProjects}</span>`;
+    if (key === 'withdrawals' && pendingWds) return `<span class="badge err">${pendingWds}</span>`;
+    return '';
+  };
+
   const sidebar = `
-<aside class="admin-sidebar">
-  <a class="logo" href="/"><span class="mark">پ</span>اپ‌تم <span class="badge primary">ادمین</span></a>
+<aside class="admin-sidebar" id="adminSidebar">
+  <a class="logo" href="/"><span class="mark">پ</span>اپ‌تم <span class="badge primary" style="font-size:.62rem">ادمین</span></a>
   <nav class="admin-nav">
-    ${menu.map(([href, label, path]) => {
-      const key = href === '/admin' ? 'dashboard' : href.split('/')[2];
-      let badge = '';
-      if (key === 'comments' && pendingComments) badge = `<span class="badge err">${pendingComments}</span>`;
-      if (key === 'messages' && unreadMsgs) badge = `<span class="badge err">${unreadMsgs}</span>`;
-      if (key === 'app-projects' && submittedProjects) badge = `<span class="badge warn">${submittedProjects}</span>`;
-      if (key === 'withdrawals' && pendingWds) badge = `<span class="badge err">${pendingWds}</span>`;
-      return `<a href="${href}" class="${active === key ? 'active' : ''}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>${label}${badge}</a>`;
-    }).join('')}
+    ${groups.map(([gTitle, items]) => `
+      <div class="nav-group-title">${gTitle}</div>
+      ${items.map(([href, label, key, path]) => `
+        <a href="${href}" class="${active === key ? 'active' : ''}" title="${esc(label)}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>
+          ${esc(label)}${badgeFor(key)}
+        </a>`).join('')}
+    `).join('')}
   </nav>
   <div class="admin-side-footer">
     <div class="admin-user">
-      <div class="avatar sm">${esc((user?.name || 'ا').trim().charAt(0))}</div>
-      <div><b>${esc(user?.name || '')}</b><div class="muted small">مدیر سیستم</div></div>
+      <div class="avatar">${esc((user?.name || 'ا').trim().charAt(0))}</div>
+      <div class="grow"><b class="small">${esc(user?.name || '')}</b><div class="muted small">مدیر سیستم</div></div>
     </div>
-    <a class="btn sm ghost" href="/" target="_blank">مشاهده فروشگاه</a>
+    <a class="btn sm ghost" href="/" target="_blank">${I.store} مشاهده فروشگاه</a>
   </div>
-</aside>`;
+</aside>
+<div class="admin-side-ov" id="sideOv" hidden></div>`;
+
+  // ─── مرکز اعلان‌ها (دراپ‌داون) ───
+  const notifItems = [
+    unreadMsgs ? `<a class="notif-item" href="/admin/messages"><span class="notif-ic" style="background:color-mix(in srgb,var(--primary) 16%,transparent);color:var(--primary)">💬</span><span class="grow"><b>${unreadMsgs} پیام خوانده‌نشده</b><small>از مشتریان در انتظار پاسخ شماست</small></span></a>` : '',
+    pendingComments ? `<a class="notif-item" href="/admin/comments"><span class="notif-ic" style="background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)">💬</span><span class="grow"><b>${pendingComments} نظر در انتظار تأیید</b><small>بررسی و انتشار نظرات جدید</small></span></a>` : '',
+    submittedProjects ? `<a class="notif-item" href="/admin/app-projects"><span class="notif-ic" style="background:color-mix(in srgb,var(--info) 16%,transparent);color:var(--info)">📱</span><span class="grow"><b>${submittedProjects} پروژه اپ در انتظار قیمت‌گذاری</b><small>پرامپت مشتریان را بررسی کنید</small></span></a>` : '',
+    pendingWds ? `<a class="notif-item" href="/admin/withdrawals"><span class="notif-ic" style="background:color-mix(in srgb,var(--err) 16%,transparent);color:var(--err)">💸</span><span class="grow"><b>${pendingWds} برداشت در حال پردازش</b><small>واریزها را تأیید کنید</small></span></a>` : '',
+    unverifiedUsers ? `<a class="notif-item" href="/admin/customers"><span class="notif-ic" style="background:color-mix(in srgb,var(--primary-3) 16%,transparent);color:var(--primary-3)">⚠️</span><span class="grow"><b>${unverifiedUsers} حساب تأییدنشده</b><small>۷ روز پس از ثبت‌نام حذف می‌شوند</small></span></a>` : '',
+  ].filter(Boolean).join('');
+
   const topbar = `
 <header class="admin-topbar">
   <div class="between">
-    <h1>${esc(title)}</h1>
+    <div>
+      <button class="icon-btn" id="sideToggle" aria-label="منو" style="margin-inline-end:10px;vertical-align:middle">${I.menu}</button>
+      <h1 style="display:inline-block;vertical-align:middle">${esc(title)}</h1>
+      <div class="admin-breadcrumb" style="margin-top:2px">پنل مدیریت <span>‹</span> <b>${esc(title)}</b></div>
+    </div>
     <div class="flex">
-      <button class="icon-btn" id="themeToggle" aria-label="تغییر تم"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <a class="btn sm soft" href="/admin/products/new">${I.plus} قالب جدید</a>
+      <div class="notif-wrap">
+        <button class="icon-btn notif-bell" id="notifBell" aria-label="اعلان‌ها" aria-haspopup="true" aria-expanded="false">${I.bell}
+          ${notifTotal ? `<span class="notif-dot">${notifTotal}</span>` : ''}
+        </button>
+        <div class="notif-panel" id="notifPanel" role="menu">
+          <div class="notif-title">🔔 مرکز اعلان‌ها <span class="badge primary">${notifTotal}</span></div>
+          ${notifItems || '<div class="notif-empty">✅ همه‌چیز مرتب است؛ اعلان جدیدی ندارید.</div>'}
+        </div>
+      </div>
+      <button class="icon-btn" id="themeToggle" aria-label="تغییر تم">${I.sun}</button>
+      <div class="notif-wrap">
+        <button class="icon-btn" id="adminUserBtn" aria-label="حساب مدیر" aria-haspopup="true" aria-expanded="false"><span class="avatar sm" style="width:26px;height:26px;font-size:.75rem">${esc((user?.name || 'ا').trim().charAt(0))}</span></button>
+        <div class="user-menu" id="adminUserMenu" role="menu">
+          <a href="/account" role="menuitem">👤 حساب کاربری</a>
+          <a href="/" target="_blank" role="menuitem">🏪 مشاهده فروشگاه</a>
+          <form method="post" action="/logout"><input type="hidden" name="_csrf" value="${esc(csrf)}"><button type="submit" role="menuitem" style="color:var(--err)">${I.exit} خروج از پنل</button></form>
+        </div>
+      </div>
     </div>
   </div>
 </header>`;
+
   const html = `
 <div class="admin-shell">
   ${sidebar}

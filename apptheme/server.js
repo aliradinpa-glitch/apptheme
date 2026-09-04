@@ -52,11 +52,13 @@ function redirect(res, to) {
   res.end();
 }
 function notFoundPage() {
-  return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>۴۰۴ — صفحه پیدا نشد</title><link rel="stylesheet" href="/assets/css/app.css"></head><body>
-<div class="auth-wrap"><div class="card auth-card center"><div style="font-size:3.4rem">🧭</div><h1 style="justify-content:center">صفحه پیدا نشد!</h1><p class="sub">آدرسی که دنبالش هستید وجود ندارد یا جابه‌جا شده.</p><a class="btn" href="/">بازگشت به خانه</a></div></div></body></html>`;
+  return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>۴۰۴ — صفحه پیدا نشد</title><link rel="stylesheet" href="/assets/css/app.css"><link rel="icon" href="/favicon.svg" type="image/svg+xml"></head><body>
+<div class="bg-fx" aria-hidden="true"></div>
+<div class="auth-wrap"><div class="card auth-card center"><div style="font-size:3.4rem;filter:drop-shadow(0 0 22px rgba(124,92,255,.5))">🧭</div><h1 style="justify-content:center">صفحه پیدا نشد!</h1><p class="sub">آدرسی که دنبالش هستید وجود ندارد یا جابه‌جا شده.</p><div style="display:grid;gap:10px"><a class="btn" href="/">بازگشت به خانه</a><a class="btn ghost" href="/templates">مشاهده قالب‌ها</a></div></div></div></body></html>`;
 }
-const errPage = () => `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>خطای سرور</title><link rel="stylesheet" href="/assets/css/app.css"></head><body>
-<div class="auth-wrap"><div class="card auth-card center"><div style="font-size:3.4rem">⚠️</div><h1 style="justify-content:center">خطای غیرمنتظره</h1><p class="sub">مشکلی پیش آمد؛ دوباره تلاش کنید.</p><a class="btn" href="/">بازگشت</a></div></div></body></html>`;
+const errPage = () => `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>خطای سرور</title><link rel="stylesheet" href="/assets/css/app.css"><link rel="icon" href="/favicon.svg" type="image/svg+xml"></head><body>
+<div class="bg-fx" aria-hidden="true"></div>
+<div class="auth-wrap"><div class="card auth-card center"><div style="font-size:3.4rem;filter:drop-shadow(0 0 22px rgba(251,113,133,.5))">⚠️</div><h1 style="justify-content:center">خطای غیرمنتظره</h1><p class="sub">مشکلی پیش آمد؛ دوباره تلاش کنید.</p><a class="btn" href="/">بازگشت</a></div></div></body></html>`;
 
 // ─── بدنه درخواست ───
 function readBody(req) {
@@ -114,6 +116,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, 'http://internal');
     pathname = decodeURIComponent(u.pathname);
+    if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1); // برابرسازی اسلش انتهایی
     query = Object.fromEntries(u.searchParams);
   } catch {
     return send(req, res, 400, notFoundPage());

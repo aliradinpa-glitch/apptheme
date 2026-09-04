@@ -1,7 +1,7 @@
 {
   "name": "apptheme",
-  "version": "1.7.0",
-  "description": "اپ‌تم — فروشگاه قالب‌های حرفه‌ای وب | Full-stack template marketplace (zero-dependency Node.js)",
+  "version": "2.0.0",
+  "description": "اپتم — فروشگاه قالبهای حرفهای وب | پوسته نئون ریفت 2.0",
   "type": "module",
   "main": "server.js",
   "scripts": {

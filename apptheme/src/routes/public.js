@@ -231,12 +231,25 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
         const pages = Math.ceil(products.length / PER);
         const cur = Math.min(Math.max(1, parseInt(query.page) || 1), pages);
         const slice = products.slice((cur - 1) * PER, cur * PER);
-        const pager = pages > 1 ? `<div class="pager">${[
-          cur > 1 ? `<a class="btn ghost sm" href="${qs({ page: cur - 1 })}">قبلی →</a>` : '',
-          ...Array.from({ length: pages }, (_, i) =>
-            `<a class="btn ${i + 1 === cur ? '' : 'ghost'} sm pg-num" href="${qs({ page: i + 1 })}" ${i + 1 === cur ? 'aria-current="page"' : ''}>${fa(i + 1)}</a>`),
-          cur < pages ? `<a class="btn ghost sm" href="${qs({ page: cur + 1 })}">← بعدی</a>` : '',
-        ].join('')}</div>` : '';
+        const pager = pages > 1 ? (() => {
+          const pgBtn = (href, label, cls, isCur, title = '') => `<a class="btn sm ${cls}" href="${href}" ${isCur ? 'aria-current="page"' : ''} ${title ? `title="${title}"` : ''}>${label}</a>`;
+          let nums = [];
+          for (let i = 1; i <= pages; i++) {
+            if (i === 1 || i === pages || Math.abs(i - cur) <= 1) nums.push(i);
+            else if (nums[nums.length - 1] !== '…') nums.push('…');
+          }
+          const numHtml = nums.map(n => n === '…'
+            ? '<span class="pg-dots">•••</span>'
+            : pgBtn(qs({ page: n }), fa(n), (n === cur ? '' : 'ghost ') + 'pg-num', n === cur)).join('');
+          return `<div class="pager">
+            ${cur > 1 ? pgBtn(qs({ page: 1 }), '« اول', 'ghost', false, 'اولین صفحه') : ''}
+            ${cur > 1 ? pgBtn(qs({ page: cur - 1 }), '→ قبلی', 'ghost', false, 'صفحه قبل') : ''}
+            ${numHtml}
+            ${cur < pages ? pgBtn(qs({ page: cur + 1 }), 'بعدی ←', 'ghost', false, 'صفحه بعد') : ''}
+            ${cur < pages ? pgBtn(qs({ page: pages }), 'آخر »', 'ghost', false, 'آخرین صفحه') : ''}
+            <span class="pg-info">نمایش ${fa((cur - 1) * PER + 1)} تا ${fa(Math.min(cur * PER, products.length))} از ${fa(products.length)} قالب — صفحه ${fa(cur)} از ${fa(pages)}</span>
+          </div>`;
+        })() : '';
         return `<div class="grid-products">${slice.map(x => productCard(x, user, cart.map(c => c.id))).join('')}</div>${pager}`;
       })()
     : `<div class="card empty-state"><div class="ic">🔍</div><p>قالبی با این مشخصات پیدا نشد.</p><a class="btn soft sm" style="margin-top:14px" href="/templates">حذف فیلترها</a></div>`}
