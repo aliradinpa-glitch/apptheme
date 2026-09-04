@@ -245,7 +245,30 @@ ck "gw-callback-unknown" "/account" "$r"
 curl -s -b $JAR -o /dev/null -X POST $B/admin/settings/save --data-urlencode "_csrf=$MA" --data-urlencode "shopName=اپ‌تم" --data-urlencode "tagline=x" --data-urlencode "description=x" --data-urlencode "payProvider=demo" --data-urlencode "merchantId="
 ck "gw-demo-restored" "درگاه پرداخت امن" "$(curl -s -b $LJ $B/payment/$(curl -s -b $LJ -o /dev/null -w '%{redirect_url}' -X POST $B/checkout/pay --data-urlencode "_csrf=$M" --data-urlencode "items=8" | grep -o 'AT-[0-9]*'))"
 
-# ─── ۱۴. پاک‌سازی داده‌های دمو ───
+# ─── ۱۳.۵. اشتراک پرو + استودیوی کاربران (قالب/افزونه/فروشگاه/اپ) ───
+PJ=/tmp/tl-pro.txt; rm -f $PJ
+PC=$(curl -s -c $PJ $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
+curl -s -b $PJ -c $PJ -o /dev/null -X POST $B/login --data-urlencode "_csrf=$PC" --data-urlencode "identifier=negar@demo.ir" --data-urlencode "password=demo12345"
+PCS=$(curl -s -b $PJ $B/ai | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
+ck "pro-plans-page" "خرید اشتراک" "$(curl -s -b $PJ $B/ai)"
+R=$(curl -s -b $PJ -X POST $B/ai/subscribe -H "Content-Type: application/json" -H "X-CSRF: $PCS" -d '{"plan":"bronze"}')
+ck "pro-subscribe" '"ok":true' "$R"
+ck "pro-studio" "قدرت هوش مصنوعی تو" "$(curl -s -b $PJ $B/ai)"
+B1=$(curl -s -b $PJ -X POST $B/ai/build -H "Content-Type: application/json" -H "X-CSRF: $PCS" -d '{"kind":"app","prompt":"اپ فروشگاهی شاپینو با اعلان تخفیف"}')
+ck "pro-build-app" '"previewable":true' "$B1"
+T1=$(echo "$B1" | grep -o '"token":"[a-f0-9]*"' | cut -d'"' -f4)
+ck "pro-preview-app" "شاپینو" "$(curl -s -b $PJ $B/preview/ai/$T1)"
+B2=$(curl -s -b $PJ -X POST $B/ai/rework -H "Content-Type: application/json" -H "X-CSRF: $PCS" -d "{\"token\":\"$T1\",\"edit\":\"رنگ اصلی آبی کن\"}")
+ck "pro-rework" '"ok":true' "$B2"
+T2=$(echo "$B2" | grep -o '"token":"[a-f0-9]*"' | cut -d'"' -f4)
+PUT=$(curl -s -b $PJ -o /tmp/pro-dl.zip -w '%{http_code}' "$B/ai/download?token=$T2")
+ck "pro-download" "200" "$PUT"
+R=$(curl -s -b $JAR -X POST $B/admin/ai/proplans -H "X-CSRF: $MA" -H "Content-Type: application/json" -d '{"plans":[{"key":"epic","price":1990000,"ai":50,"days":30,"active":true}]}')
+ck "admin-proplans" '"ok":true' "$R"
+ck "admin-proplans-ai50" '"ai":50' "$R"
+ck "admin-ai-pro-page" "پلن‌های پرو" "$(curl -s -b $JAR $B/admin/ai-pro)"
+
+
 R=$(curl -s -b $JAR -X POST $B/admin/purge-demo -H "X-CSRF: $MA")
 ck "purge-ok" '"ok":true' "$R"
 C=$(curl -s -c /tmp/pp.txt $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)

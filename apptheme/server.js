@@ -15,6 +15,7 @@ import * as pub from './src/routes/public.js';
 import * as api from './src/routes/api.js';
 import * as admin from './src/routes/admin.js';
 import * as aiadmin from './src/aiadmin.js';
+import { userStudioPage, apiUserBuild, apiUserRework, apiUserSubscribe, proState } from './src/proai.js';
 import { makeZip } from './src/zip.js';
 import { buildFromUrl } from './src/sitegen.js';
 import { convertTemplate } from './src/converter.js';
@@ -303,6 +304,15 @@ const server = http.createServer(async (req, res) => {
         return handle(admin.handleAdminReply(req, res, ctx));
       }
 
+      // ─── استودیوی پرو کاربران ───
+      if (pathname === '/ai/build' || pathname === '/ai/rework' || pathname === '/ai/subscribe') {
+        if (!user) return redirect(res, '/login');
+        if (!csrfOk(req, session, body)) return finish(403, 'درخواست نامعتبر (CSRF)');
+        if (pathname === '/ai/build') return handle(apiUserBuild(req, res, ctx));
+        if (pathname === '/ai/rework') return handle(apiUserRework(req, res, ctx));
+        return handle(apiUserSubscribe(req, res, ctx));
+      }
+
       // ─── ادمین ───
       if (pathname.startsWith('/admin/') && (!user || user.role !== 'admin')) return redirect(res, '/login');
       if (pathname.startsWith('/admin/') && !csrfOk(req, session, body)) return finish(403, 'درخواست نامعتبر (CSRF)');
@@ -314,6 +324,8 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/admin/ai/analyze') return handle(aiadmin.apiAiAnalyze(req, res, ctx));
       if (pathname === '/admin/ai/build') return handle(aiadmin.apiAiBuild(req, res, ctx));
       if (pathname === '/admin/ai/publish') return handle(aiadmin.aiPublish(req, res, ctx));
+      if (pathname === '/admin/ai/proplans') return handle(aiadmin.apiProPlansSave(req, res, ctx));
+      if (pathname === '/admin/ai/rework') return handle(aiadmin.apiAiRework(req, res, ctx));
       if (pathname === '/admin/ai/linkbuild') {
         const url = String(ctx.body.url || '');
         if (!/^https?:\/\//i.test(url)) { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); return res.end(JSON.stringify({ ok: false, error: 'لینک معتبر بده' })); }
@@ -524,7 +536,24 @@ const server = http.createServer(async (req, res) => {
 
       // سفارش اپ
       if (pathname === '/apps') return finish(200, apporder.renderAppsHome(req, res, ctx));
-      if (pathname === '/ai') return finish(200, pub.aiHub(req, res, ctx));
+      if (pathname === '/ai') return finish(200, user ? userStudioPage(req, res, ctx) : pub.aiHub(req, res, ctx));
+      if (pathname === '/ai/download') {
+        if (!user) return redirect(res, '/login');
+        const token = String(ctx.query.token || '');
+        const rec = findOne('aiProducts', x => x.token === token);
+        if (!rec || (rec.userId !== user.id && user.role !== 'admin')) return finish(404, notFoundPage());
+        const onDisk = readAiBuild(token);
+        if (onDisk) {
+          res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="ai-build-' + token.slice(0, 8) + '.zip"' });
+          return res.end(onDisk);
+        }
+        const r = aiadmin.apiAiDownload(req, res, { query: ctx.query });
+        if (r && r.download) {
+          res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="' + r.download.name + '"' });
+          return res.end(r.download.buf);
+        }
+        return finish(404, 'پروژه پیدا نشد');
+      }
       if ((m = pathname.match(/^\/preview\/gen\/([a-f0-9]{32})$/))) {
         const gen = findOne('generatedTemplates', g => g.token === m[1]);
         if (!gen) return finish(404, notFoundPage());
@@ -532,9 +561,27 @@ const server = http.createServer(async (req, res) => {
       }
       if ((m = pathname.match(/^\/preview\/ai\/([A-Za-z0-9]+)$/))) {
         const rec = findOne('aiProducts', x => x.token === m[1]);
-        if (!rec || !(rec.data && rec.data.full && rec.data.full.home)) return finish(404, notFoundPage());
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        return res.end(rec.data.full.home);
+        if (!rec) return finish(404, notFoundPage());
+        const pubProduct = rec.productId && findOne('products', p => p.id === rec.productId && p.published);
+        const allowed = !!(user && (user.role === 'admin' || rec.userId === user.id)) || !!pubProduct;
+        if (!allowed) return finish(403, 'دسترسی ندارید — این خروجی خصوصی شماست؛ وارد حساب خودت شو');
+        // ۱) فایل preview.html از ZIP روی دیسک
+        if (rec.kind !== 'template') {
+          const zb = readAiBuild(rec.token);
+          if (zb) {
+            try {
+              const { unzip } = await import('./src/zipx.js');
+              const files = unzip(zb);
+              const pv = files.find(f => f.name === 'preview.html' || f.name === 'index.html');
+              if (pv) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(String(pv.data)); }
+            } catch (e) {}
+          }
+        }
+        if (rec.data && rec.data.full && rec.data.full.home) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          return res.end(rec.data.full.home);
+        }
+        return finish(404, notFoundPage());
       }
       if (pathname === '/admin/ai/download') {
         const token = String(ctx.query.token || '');
@@ -576,6 +623,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       // ─── استودیوی هوش مصنوعی (صفحه) ───
+      if (pathname === '/admin/ai-pro') {
+        if (!user || user.role !== 'admin') return redirect(res, '/login');
+        return finish(200, aiadmin.aiProPage(req, res, ctx));
+      }
       if (pathname === '/admin/ai-studio') {
         if (!user || user.role !== 'admin') return redirect(res, '/login');
         return finish(200, aiadmin.aiStudioPage(req, res, { user }));

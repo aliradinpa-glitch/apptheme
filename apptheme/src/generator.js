@@ -308,8 +308,7 @@ ${p.description || ''}
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>شروع با Tailwind</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{colors:{brand:{DEFAULT:'${(p.palette || ['#6d5ef2'])[0]}',light:'${(p.palette || ['#6d5ef2', '#22d3ee'])[1]}'}}}}}</script>
+<style>/* بدون CDN — آفلاین */body{font-family:Vazirmatn,Tahoma,sans-serif;margin:0;background:#f8fafc;color:#1e293b;direction:rtl}.max-w-4xl{max-width:56rem;margin-inline:auto}.px-6{padding-inline:1.5rem}.py-24{padding-block:5rem}.text-center{text-align:center}.text-4xl{font-size:2.2rem;line-height:1.4}.font-extrabold{font-weight:800}.mb-4{margin-bottom:1rem}.mb-8{margin-bottom:2rem}.text-slate-500{color:#64748b}.rounded-xl{border-radius:.75rem}.py-3{padding-block:.75rem}.text-white{color:#fff}.text-brand{color:${(p.palette || ['#6d5ef2'])[0]}}.bg-brand{background:${(p.palette || ['#6d5ef2'])[0]}}@media(max-width:640px){.py-24{padding-block:3.5rem}.text-4xl{font-size:1.7rem}}</style>
 </head>
 <body class="bg-slate-50 text-slate-800">
   <div class="max-w-4xl mx-auto px-6 py-24 text-center">
@@ -325,8 +324,7 @@ ${p.description || ''}
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>شروع با Bootstrap 5</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-<style>:root{--bs-primary:${(p.palette || ['#6d5ef2'])[0]}};.btn-primary{--bs-bg:var(--bs-primary)}</style>
+<style>/* بدون CDN — آفلاین */:root{--bs-primary:${(p.palette || ['#6d5ef2'])[0]}}body{font-family:Vazirmatn,Tahoma,sans-serif;margin:0;color:#212529}.container{max-width:1140px;margin-inline:auto;padding-inline:12px}.py-5{padding-block:3rem}.text-center{text-align:center}.fw-bold{font-weight:700}.mb-3{margin-bottom:1rem}.mb-4{margin-bottom:1.5rem}.text-muted{color:#6c757d}.btn{display:inline-block;padding:.75rem 1.5rem;border-radius:.5rem;border:0;font-size:1.25rem;color:#fff;background:var(--bs-primary);text-decoration:none}.btn-primary{background:var(--bs-primary)}@media(max-width:576px){.btn{display:block;text-align:center}.py-5{padding-block:2rem}}</style>
 </head>
 <body>
   <div class="container py-5 text-center">

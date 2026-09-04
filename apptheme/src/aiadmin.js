@@ -4,7 +4,7 @@
 //  ۴) فروشگاهساز  ۵) تبدیل قالب (ZIP)  ۶) اپ اندروید
 // ═══════════════════════════════════════════════════════════════
 import { adminPage } from './render.js';
-import { TIERS, tierOf, estimatePrice, detectTier } from './gencore.js';
+import { TIERS, tierOf, estimatePrice, detectTier, strengthFor, varySpec, applyEdit, estimateBuild, proPlansOf } from './gencore.js';
 import { parsePluginPrompt, generatePlugin } from './plugingen.js';
 import { parseStorePrompt, generateStore } from './storegen.js';
 import { buildFromUrl } from './sitegen.js';
@@ -14,6 +14,12 @@ import { generateFromSpec, parsePrompt, SPEC_TYPE_LABELS, MODE_LABELS } from './
 import { esc, money, faNum, slugify } from './util.js';
 const fa = faNum;
 import { randomToken } from './security.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export function saveAiBuildFile(token, buf) {
+  try { const dir = path.join(process.cwd(), 'data', 'ai-builds'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, token + '.zip'), buf); } catch (e) { console.error('saveAiBuildFile:', e.message); }
+}
 import { insert, findOne, updateOne, findMany, getDb, persist } from './db.js';
 
 const TIER_ICONS = { bronze: '🥉', silver: '🥈', gold: '🥇', vip: '💎', legendary: '👑', epic: '🔥' };
@@ -131,6 +137,8 @@ export function apiAiAnalyze(req, res, { body, session }) {
   const prompt = String(body.prompt || '');
   let out;
   const base = tierOf(tierKey);
+  const strength = Math.round(strengthFor('admin', tierKey) * 100);
+  const eta = estimateBuild(kind, strengthFor('admin', tierKey));
   if (kind === 'plugin') {
     const spec = parsePluginPrompt(prompt, tierKey);
     const p = estimatePrice(tierKey, { sections: spec.features, prompt, dark: false });
@@ -151,7 +159,7 @@ export function apiAiAnalyze(req, res, { body, session }) {
     const p = estimatePrice(tierKey, spec);
     out = { label: `قالب «${spec.brand}»`, platform: SPEC_TYPE_LABELS[spec.type], features: [`🎨 ${MODE_LABELS[spec.mode] || spec.mode}`, spec.dark ? '🌙 دارک' : '☀️ روشن', ...spec.sections.slice(0, 3)], price: p.price };
   }
-  return { json: { ok: true, tier: tierKey, tierInfo: { icon: TIER_ICONS[tierKey], label: base.label, level: base.level, pages: base.pages }, out } };
+  return { json: { ok: true, tier: tierKey, tierInfo: { icon: TIER_ICONS[tierKey], label: base.label, level: base.level, pages: base.pages }, strength, eta: eta.label, out } };
 }
 
 // ═══════════ API: ساخت واقعی ═══════════
@@ -159,35 +167,44 @@ export function apiAiBuild(req, res, { body, session }) {
   const kind = String(body.kind || 'template');
   const tierKey = TIERS.some(t => t.key === body.tier) ? body.tier : 'gold';
   const token = randomToken(20);
+  const depth = strengthFor('admin', tierKey); // ادمین: مافوق حرفهای (اپیک = ۱۰۰٪)
+  const seed = Math.abs(parseInt(body.seed, 10) || 0);
+  const eta = estimateBuild(kind, depth, seed);
   if (kind === 'link') {
     const url = String(body.url || '');
     if (!/^https?:\/\//i.test(url)) return { json: { ok: false, error: 'لینک معتبر بده (http/https)' } };
     return { json: { ok: true, kind, token, url, note: 'در حال تحلیل و ساخت… (برای سایتهای بکاپدار چند لحظه صبر کن)' } };
   }
   if (kind === 'plugin') {
-    const spec = parsePluginPrompt(String(body.prompt || ''), tierKey);
-    const { files } = generatePlugin(spec);
+    let spec = parsePluginPrompt(String(body.prompt || ''), tierKey);
+    if (seed) spec = varySpec(spec, seed);
+    const { files } = generatePlugin(spec, depth);
     const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, { sections: spec.features }).price;
-    insert('aiProducts', { token, kind, title: `افزونه ${spec.name}`, price, discount: 0, published: false, data: { spec: { name: spec.name, isWoocommerce: spec.isWoocommerce, features: spec.features }, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.name, sizeKB: Math.round(zipBuf.length / 1024), previewable: false } };
+    insert('aiProducts', { token, kind, title: `افزونه ${spec.name}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
+    return { json: { ok: true, kind, token, name: spec.name, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
   }
   if (kind === 'store') {
-    const spec = parseStorePrompt(String(body.prompt || ''), tierKey);
+    let spec = parseStorePrompt(String(body.prompt || ''), tierKey);
     if (body.fw) spec.framework = body.fw;
-    const { files, zipName } = generateStore(spec);
+    if (seed) spec = varySpec(spec, seed);
+    const { files, zipName } = generateStore(spec, depth);
     const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, spec).price;
-    insert('aiProducts', { token, kind, title: `فروشگاهساز ${spec.brand} (${spec.framework})`, price, discount: 0, published: false, data: { spec: { brand: spec.brand, framework: spec.framework, palette: spec.palette }, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: false } };
+    insert('aiProducts', { token, kind, title: `فروشگاهساز ${spec.brand} (${spec.framework})`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
+    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
   }
   if (kind === 'app') {
-    const spec = parsePrompt(String(body.prompt || ''));
-    const { files } = generateApp(spec, tierKey);
+    let spec = parsePrompt(String(body.prompt || ''));
+    if (seed) spec = varySpec(spec, seed);
+    const { files } = generateApp(spec, tierKey, depth);
     const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
     const price = estimatePrice(tierKey, spec).price;
-    insert('aiProducts', { token, kind, title: `اپ اندروید ${spec.brand}`, price, discount: 0, published: false, data: { spec: { brand: spec.brand, palette: spec.palette }, prompt: body.prompt }, createdAt: new Date().toISOString() });
-    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: false } };
+    insert('aiProducts', { token, kind, title: `اپ اندروید ${spec.brand}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt: body.prompt }, createdAt: new Date().toISOString() });
+    return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
   }
   if (kind === 'convert') {
     // مسیر جدا: آپلود فایل → analyze → build (در route جدا)
@@ -195,17 +212,133 @@ export function apiAiBuild(req, res, { body, session }) {
   }
   // قالبساز
   const prompt = String(body.prompt || '');
-  const spec = parsePrompt(prompt);
+  let spec = parsePrompt(prompt);
   if (body.mode && MODE_LABELS[body.mode]) spec.mode = body.mode;
-  const gen = generateFromSpec(spec, { styleInline: true });
+  if (seed) spec = varySpec(spec, seed);
+  const gen = generateFromSpec(spec, { styleInline: true, depth });
   const price = estimatePrice(tierKey, spec).price;
-  insert('aiProducts', { token, kind: 'template', title: `قالب ${spec.brand}`, price, discount: 0, published: false, data: { spec: { brand: spec.brand, type: spec.type, mode: spec.mode, palette: spec.palette, dark: spec.dark }, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style }, prompt }, createdAt: new Date().toISOString() });
-  return { json: { ok: true, kind: 'template', token, name: spec.brand, sizeKB: Math.round(gen.home.length / 1024), previewable: true } };
+  insert('aiProducts', { token, kind: 'template', title: `قالب ${spec.brand}`, price, discount: 0, published: false, depth, seed, tier: tierKey, data: { spec, prompt, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style } }, createdAt: new Date().toISOString() });
+  return { json: { ok: true, kind: 'template', token, name: spec.brand, sizeKB: Math.round(gen.home.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed } };
+}
+
+// ═══════════ ویرایش مجدد خروجی (ادمین) ═══════════
+export function apiAiRework(req, res, { body, session }) {
+  const rec = findOne('aiProducts', x => x.token === String(body.token || ''));
+  if (!rec) return { json: { ok: false, error: 'پروژه پیدا نشد' } };
+  const edit = String(body.edit || '');
+  const spec0 = rec.data?.spec || {};
+  const { spec: spec1, notes } = applyEdit(spec0, edit);
+  const depth = strengthFor('admin', rec.tier || 'gold');
+  const tierKey = rec.tier || 'gold';
+  const token = randomToken(20);
+  const seedNew = (parseInt(rec.seed, 10) || 0) + 1;
+  const eta = estimateBuild(rec.kind, depth, seedNew);
+  let name = spec1.brand || spec1.name || 'نسخه جدید';
+  if (rec.kind === 'plugin') {
+    const spec = { ...spec1, prompt: (rec.data?.prompt || '') + ' — ویرایش: ' + edit };
+    const { files } = generatePlugin(spec, depth);
+    const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
+    insert('aiProducts', { token, kind: 'plugin', title: `افزونه ${spec.name}`, price: rec.price, discount: 0, published: false, depth, seed: seedNew, tier: tierKey, data: { spec, prompt: spec.prompt }, parent: rec.token, version: (rec.version || 0) + 1, userId: rec.userId || null, role: rec.role || 'admin', createdAt: new Date().toISOString() });
+    name = spec.name;
+    appendVersion(rec, token, edit);
+    return { json: { ok: true, kind: 'plugin', token, name, notes, eta: eta.label, previewable: true } };
+  }
+  if (rec.kind === 'store') {
+    const spec = { ...spec1, prompt: (rec.data?.prompt || '') + ' — ویرایش: ' + edit };
+    const { files } = generateStore(spec, depth);
+    const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
+    insert('aiProducts', { token, kind: 'store', title: `فروشگاهساز ${spec.brand}`, price: rec.price, discount: 0, published: false, depth, seed: seedNew, tier: tierKey, data: { spec, prompt: spec.prompt }, parent: rec.token, version: (rec.version || 0) + 1, userId: rec.userId || null, role: rec.role || 'admin', createdAt: new Date().toISOString() });
+    name = spec.brand;
+    appendVersion(rec, token, edit);
+    return { json: { ok: true, kind: 'store', token, name, notes, eta: eta.label, previewable: true } };
+  }
+  if (rec.kind === 'app') {
+    const spec = { ...spec1, prompt: (rec.data?.prompt || '') + ' — ویرایش: ' + edit };
+    const { files } = generateApp(spec, tierKey, depth);
+    const zipBuf = makeZip(files);
+    saveAiBuildFile(token, zipBuf);
+    insert('aiProducts', { token, kind: 'app', title: `اپ اندروید ${spec.brand}`, price: rec.price, discount: 0, published: false, depth, seed: seedNew, tier: tierKey, data: { spec, prompt: spec.prompt }, parent: rec.token, version: (rec.version || 0) + 1, userId: rec.userId || null, role: rec.role || 'admin', createdAt: new Date().toISOString() });
+    name = spec.brand;
+    appendVersion(rec, token, edit);
+    return { json: { ok: true, kind: 'app', token, name, notes, eta: eta.label, previewable: true } };
+  }
+  // قالب
+  const spec = { ...spec1, prompt: (rec.data?.prompt || '') + ' — ویرایش: ' + edit };
+  const gen = generateFromSpec(spec, { styleInline: true, depth });
+  insert('aiProducts', { token, kind: 'template', title: `قالب ${spec.brand}`, price: rec.price, discount: 0, published: false, depth, seed: seedNew, tier: tierKey, data: { spec, prompt: spec.prompt, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style } }, parent: rec.token, version: (rec.version || 0) + 1, userId: rec.userId || null, role: rec.role || 'admin', createdAt: new Date().toISOString() });
+  name = spec.brand;
+  appendVersion(rec, token, edit);
+  return { json: { ok: true, kind: 'template', token, name, notes, eta: eta.label, previewable: true } };
+}
+
+function appendVersion(rec, token, edit) {
+  try { updateOne('aiProducts', x => x.token === rec.token, { versions: [...(rec.versions || []), { token, edit: String(edit || '').slice(0, 80), at: new Date().toISOString() }] }); } catch {}
+}
+
+// ═══════════ صفحه ادمین: پلنهای پرو ═══════════
+export function aiProPage(req, res, { user }) {
+  const plans = proPlansOf(getDb());
+  const rows = plans.map(p => `
+  <div class="plan-row" data-key="${p.key}">
+    <div class="pr-name">${p.icon} ${p.label} <small class="muted">سطح ${TIERS.find(t => t.key === p.key)?.level || '-'}</small></div>
+    <label class="field"><span>قیمت ماهانه (تومان)</span><input class="input ltr" data-f="price" type="number" value="${p.price}"></label>
+    <label class="field"><span>درصد هوش مصنوعی (٪)</span><input class="input ltr" data-f="ai" type="number" min="4" max="50" value="${p.ai}"></label>
+    <label class="field"><span>مدت (روز)</span><input class="input ltr" data-f="days" type="number" min="7" max="365" value="${p.days}"></label>
+    <label class="check-line"><input data-f="active" type="checkbox" ${p.active ? 'checked' : ''}> فعال</label>
+  </div>`).join('');
+  const body = `
+<div class="ai-hero"><div class="ai-hero-in">
+  <div><span class="badge primary" style="font-size:.75rem">👥 اشتراک پرو کاربران</span>
+    <h2 style="margin:8px 0 6px">پلنهای پرو — تنظیم از این صفحه</h2>
+    <p class="muted">کاربران با خرید اشتراک، همان قالبساز/افزونهساز/فروشگاهساز/اپساز را دارند؛ اما قدرت هوش مصنوعیشان طبق درصد این صفحه است. <b>بهترین پلن پرو پیشفرض ۵۰٪ قدرت ادمین است</b> (ادمین ۱۰۰٪ مافوق حرفهای).</p>
+  </div>
+</div></div>
+<div class="card panel" style="margin-top:14px;padding:18px">
+  <div class="plan-head"><span>پلن</span><span>قیمت</span><span>قدرت AI</span><span>مدت</span><span>وضعیت</span></div>
+  ${rows}
+  <div class="between" style="margin-top:14px"><button class="btn" id="savePlans">💾 ذخیره پلنها</button><span class="hint" id="plansMsg"></span></div>
+  <p class="muted small" style="margin-top:10px">📌 قدرت هر پلن را بین ۴٪ تا ۵۰٪ بگذار؛ صفر کردن درصد = پلن غیرفعال نمایش داده میشود ولی خرید آن خطا میگیرد. تغییرات بلافاصله روی صفحهٔ /ai کاربران اعمال میشود.</p>
+</div>
+<script>
+document.getElementById('savePlans').addEventListener('click', function () {
+  const plans = [];
+  document.querySelectorAll('.plan-row').forEach(function (row) {
+    plans.push({
+      key: row.getAttribute('data-key'),
+      price: parseInt(row.querySelector('[data-f=price]').value, 10) || 0,
+      ai: parseInt(row.querySelector('[data-f=ai]').value, 10) || 0,
+      days: parseInt(row.querySelector('[data-f=days]').value, 10) || 30,
+      active: row.querySelector('[data-f=active]').checked,
+    });
+  });
+  fetch('/admin/ai/proplans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plans: plans }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { document.getElementById('plansMsg').textContent = d.ok ? '✓ ذخیره شد' : (d.error || 'خطا'); })
+    .catch(function () { document.getElementById('plansMsg').textContent = 'خطا در ارتباط'; });
+});
+</script>`;
+  return adminPage({ user, csrf: user.__csrf || '', title: 'پلنهای پرو 👥', active: 'ai-pro', body });
+}
+
+export function apiProPlansSave(req, res, { body }) {
+  const db = getDb();
+  const src = Array.isArray(body.plans) ? body.plans : [];
+  const saved = { ...(db.settings?.proPlans || {}) };
+  for (const p of src) {
+    if (!p || typeof p.key !== 'string') continue;
+    saved[p.key] = { price: Math.max(0, parseInt(p.price, 10) || 0), ai: Math.min(50, Math.max(0, parseInt(p.ai, 10) || 0)), days: Math.min(365, Math.max(7, parseInt(p.days, 10) || 30)), active: !!p.active };
+  }
+  db.settings = db.settings || {};
+  db.settings.proPlans = saved;
+  persist();
+  return { json: { ok: true, plans: proPlansOf(db) } };
 }
 
 // ═══════════ اپ اندروید (PWA کامل + راهنما) ═══════════
 import { makeDocx } from './docx.js';
-export function generateApp(spec, tierKey = 'gold') {
+export function generateApp(spec, tierKey = 'gold', depth = 1) {
   const tier = tierOf(tierKey);
   const [c1, c2, ac] = spec.palette;
   const manifest = JSON.stringify({
@@ -216,16 +349,17 @@ export function generateApp(spec, tierKey = 'gold') {
   }, null, 1);
   const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#g)"/><text x="256" y="330" font-size="240" text-anchor="middle" fill="#fff">${spec.brand.trim().charAt(0)}</text></svg>`;
   const index = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="${c1}"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.svg"><title>${spec.brand} — اپلیکیشن</title>
-<style>${appCss(spec, tier)}</style></head><body>
+<style>${appCss(spec, tier, depth)}</style></head><body>
 <header class="hdr"><div class="app-bar"><a class="lg">${spec.brand.trim().charAt(0)}</a><b>${spec.brand}</b><button id="installBtn" class="mini">⬇ نصب</button></div>
-<nav class="tabs"><a class="on" data-v="home">🏠 خانه</a><a data-v="cats">🗂 دستهها</a><a data-v="cart">🛒 سبد</a><a data-v="profile">👤 پروفایل</a></nav></header>
+<nav class="tabs"><a class="on" data-v="home">🏠 خانه</a><a data-v="cats">🗂 دستهها</a>${depth >= 0.75 ? '<a data-v="offers">🎁 تخفیفها</a>' : ''}<a data-v="cart">🛒 سبد</a><a data-v="profile">👤 پروفایل</a></nav></header>
 <main>
   <section class="view on" id="v-home">
     <div class="banner">🔥 تخفیفهای ${spec.brand} — تا ٪۵۰</div>
     <h3>پیشنهاد امروز</h3>
-    <div class="grid">${Array(6).fill(0).map((_, i) => `<div class="pcard"><div class="pi" style="background:linear-gradient(135deg,${c1}cc,${c2}cc)">${['🛍️','📱','⌚','🎧','👟','🧸'][i]}</div><b>${['محصول ${i+1}','گجت هوشمند','ساعت مچی','هدفون پرو','کتانی راحتی','عروسک فانتزی'][i]}</b><span>${(480000 + i * 130000).toLocaleString('fa-IR')} تومان</span><button class="add">افزودن +</button></div>`).join('')}</div>
+    <div class="grid">${Array(Math.max(4, Math.round(4 + 6 * depth))).fill(0).map((_, i) => `<div class="pcard"><div class="pi" style="background:linear-gradient(135deg,${c1}cc,${c2}cc)">${['🛍️','📱','⌚','🎧','👟','🧸','💻','📷','🔊','🧺','🕶️','🎮'][i % 12]}</div><b>${['محصول ${i+1}','گجت هوشمند','ساعت مچی','هدفون پرو','کتانی راحتی','عروسک فانتزی','لپتاپ سبک','دوربین دیجیتال','اسپیکر بلوتوثی','سبد چیدمان','عینک آفتابی','کنترل بازی'][i % 12]}</b><span>${(480000 + i * 130000).toLocaleString('fa-IR')} تومان</span><button class="add">افزودن +</button></div>`).join('')}</div>
   </section>
   <section class="view" id="v-cats"><h3>دستهبندیها</h3><div class="cats">${['📱 دیجیتال','👕 پوشاک','🏠 خانه','⚽ ورزشی','📚 کتاب','🧴 آرایشی'].map(c => `<div class="cat">${c}</div>`).join('')}</div></section>
+  ${depth >= 0.75 ? `<section class="view" id="v-offers"><h3>🎁 تخفیفهای ویژه</h3><div class="grid">${['🔋 پاوربانک','🎧 هدفون نویزکنسلینگ','⌚ ساعت هوشمند','🧥 کاپشن پاییزه'].map((n, i) => `<div class="pcard"><div class="pi" style="background:linear-gradient(135deg,${ac}cc,${c1}cc)">${['🔋','🎧','⌚','🧥'][i]}</div><b>${n}</b><span>${(720000 + i * 210000).toLocaleString('fa-IR')} تومان</span><button class="add">افزودن +</button></div>`).join('')}</div></section>` : ''}
   <section class="view" id="v-cart"><h3>🛒 سبد خرید</h3><div class="cartbox empty">سبد شما خالی است — از خانه شروع کنید!</div><button class="buy">تسویه حساب 💳</button></section>
   <section class="view" id="v-profile"><h3>👤 حساب کاربری</h3><div class="prof"><div class="av">م</div><div><b>کاربر مهمان</b><br><small>برای تاریخچه سفارشها وارد شوید</small></div></div><button class="buy">ورود / ثبتنام</button></section>
 </main>
@@ -269,13 +403,14 @@ ${tier.level >= 5 ? '<script src="toast.js"></script>' : ''}
     { name: 'manifest.json', data: manifest },
     { name: 'icon.svg', data: iconSvg },
     { name: 'sw.js', data: sw },
+    { name: 'preview.html', data: index },
     { name: 'toast.js', data: tier.level >= 5 ? toastJs : '// سطح پایینتر: بدون توست' },
     { name: 'README.md', data: `# اپ ${spec.brand}\n1. این پوشه را روی هاست (سرویس HTTPS) آپلود کن\n2. گوشی → کروم → باز کردن لینک → افزودن به صفحه اصلی\n3. بر اساس سطح ${tier.label}، امکانات: ${['پایه', 'ناوبری کامل', 'سبد خرید دمو', 'آفلاین', 'اعلان', 'همهچیز'][tier.level - 1]}` },
     { name: 'راهنمای اپ (Word).docx', data: guide },
   ], name: `${spec.brand.replace(/\s+/g, '-')}-app` };
 }
 
-function appCss(spec, tier) {
+function appCss(spec, tier, depth = 1) {
   const [c1, c2, ac] = spec.palette;
   return `
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:Vazirmatn,Tahoma,sans-serif;direction:rtl;background:#f2f3f7;color:#1e2244;padding-bottom:70px}
@@ -301,7 +436,10 @@ h3{font-size:1.02rem;margin:12px 0 10px}
 .prof .av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,${c1},${c2});color:#fff;display:grid;place-items:center;font-weight:800}
 .whatsnew{text-align:center;color:#9aa0b8;font-size:.72rem;padding:14px}
 .tl-t{position:fixed;bottom:84px;inset-inline:auto;left:50%;transform:translateX(50%);background:#1e2244;color:#fff;padding:10px 20px;border-radius:999px;font-size:.82rem;z-index:99;animation:tp .3s}
-@media(min-width:640px){.grid{grid-template-columns:1fr 1fr 1fr}}`;
+@media(min-width:640px){.grid{grid-template-columns:1fr 1fr 1fr}}
+.tabs a{min-height:44px;display:grid;place-items:center}.add{min-height:40px}
+@media(max-width:400px){main{padding:10px}.pcard{padding:10px}.tabs a{font-size:.78rem}}
+@media(prefers-reduced-motion:reduce){.view.on{animation:none}}`;
 }
 
 // ═══════════ دانلود فایلهای ساختهشده ═══════════
@@ -322,15 +460,16 @@ export function apiAiDownload(req, res, { query }) {
         { name: 'README.md', data: `# ${rec.data.spec?.brand}\nقالب ${rec.data.spec?.mode} سطح ${rec.tier || 'gold'}\nراهنما: «راهنمای قالب (Word).docx»` },
       ]);
     } else if (kind === 'plugin') {
-      const spec = { name: rec.data.spec?.name, isWoocommerce: rec.data.spec?.isWoocommerce, features: rec.data.spec?.features || [], prompt: rec.data.prompt || '' };
-      const { files } = generatePlugin(parsePluginPrompt(rec.data.prompt || rec.title, 'gold'));
+      const spec = rec.data?.spec && Object.keys(rec.data.spec).length ? { ...rec.data.spec, prompt: rec.data.prompt || '' } : parsePluginPrompt(rec.data.prompt || rec.title, rec.tier || 'gold');
+      const { files } = generatePlugin(spec, rec.depth || 1);
       zipBuf = makeZip(files);
     } else if (kind === 'store') {
-      const fw = rec.data.spec?.framework || 'html';
-      const { files } = generateStore(parseStorePrompt(rec.data.prompt || `فروشگاه ${rec.data.spec?.brand}`, 'gold'));
+      const spec = rec.data?.spec && Object.keys(rec.data.spec).length ? { ...rec.data.spec, prompt: rec.data.prompt || '' } : parseStorePrompt(rec.data.prompt || 'فروشگاه', rec.tier || 'gold');
+      const { files } = generateStore(spec, rec.depth || 1);
       zipBuf = makeZip(files);
     } else if (kind === 'app') {
-      const { files } = generateApp(parsePrompt(rec.data.prompt || `اپ ${rec.data.spec?.brand}`), 'gold');
+      const spec = rec.data?.spec && Object.keys(rec.data.spec).length ? { ...rec.data.spec, prompt: rec.data.prompt || '' } : parsePrompt(rec.data.prompt || 'اپ');
+      const { files } = generateApp(spec, rec.tier || 'gold', rec.depth || 1);
       zipBuf = makeZip(files);
     } else {
       return { download: null, error: 'نوع نامشخص' };

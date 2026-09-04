@@ -881,3 +881,43 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; min-width:
 .ai-cta { text-align: center; border-radius: 24px; padding: 44px 24px; border: 1px solid var(--border); background: radial-gradient(24rem 12rem at 50% -10%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 70%), var(--surface); }
 .ai-cta h2 { font-size: 1.5rem; margin-bottom: 6px; }
 .ai-cta .btn { margin-top: 16px; }
+
+/* ═══ استودیوی هوش مصنوعی/پرو (مشترک برای صفحات کاربر) ═══ */
+.ai-hero { border-radius: 22px; border: 1px solid var(--border); background: linear-gradient(160deg, #171d47, #10143a); padding: 26px 24px 20px; margin-bottom: 18px; position: relative; overflow: hidden; }
+.ai-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(26rem 12rem at 90% -20%, rgba(124,92,255,.3), transparent 60%), radial-gradient(20rem 12rem at 0% 120%, rgba(34,211,238,.16), transparent 60%); pointer-events: none; }
+.ai-hero-in { position: relative; }
+.ai-hero h2 { color: #fff; }
+.ai-hero p { color: #b9c2ec; max-width: 46rem; }
+.studio-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 16px; align-items: start; }
+.sf-head { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px; }
+.sf-tab { border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 12px; padding: 8px 14px; font-size: .82rem; cursor: pointer; transition: .18s; font-family: inherit; font-weight: 600; }
+.sf-tab:hover { border-color: var(--primary); color: var(--primary); }
+.sf-tab.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(124,92,255,.35); }
+.sf-panel { display: none; }
+.sf-panel.on { display: block; animation: viewIn .3s ease; }
+.tier-note { margin-top: 14px; background: color-mix(in srgb, var(--primary) 8%, var(--surface)); border: 1px dashed color-mix(in srgb, var(--primary) 40%, transparent); border-radius: 12px; padding: 10px 14px; font-size: .84rem; }
+.card-pad { padding: 22px; }
+
+/* ═══ بیمهٔ ریسپانسیو کل سایت (همه صفحات) ═══ */
+img, svg, video, iframe { max-width: 100%; height: auto; }
+@media (max-width: 760px) {
+  .grid-products { grid-template-columns: repeat(auto-fill, minmax(min(46%, 152px), 1fr)); gap: 12px; }
+  .section { padding: 38px 0; }
+  .hero h1 { font-size: clamp(1.4rem, 5.6vw, 2rem); }
+  table { display: block; width: 100%; overflow-x: auto; white-space: nowrap; }
+  .auth-card { max-width: 100%; }
+  .card { padding: 16px; }
+  .modal-in { max-height: 88vh; overflow-y: auto; }
+  .form-grid { grid-template-columns: 1fr; }
+  .admin-2col, .admin-cols, .studio-grid { grid-template-columns: 1fr !important; }
+  .sf-head .flex { flex-wrap: wrap; }
+  .sf-tab { flex: 1 1 auto; padding: 9px 10px; }
+  .container, .inner { padding-inline: 14px; }
+  .hero-cta { flex-direction: column; align-items: stretch; gap: 10px; }
+  .why-grid, .steps-row, .tier-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 420px) {
+  .grid-products { grid-template-columns: 1fr 1fr; }
+  .btn.lg { padding-inline: 18px; }
+  .navbar .inner { padding-inline: 10px; }
+}

@@ -4,25 +4,26 @@
 // ═══════════════════════════════════════════════════════════════
 import { generateFromSpec, parsePrompt, MODE_LABELS } from './promptgen.js';
 import { makeDocx } from './docx.js';
+import { proCssExtra } from './gencore.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
-const PROXIES = ['https://r.jina.ai/', 'https://api.allorigins.win/raw?url=']; // برای سایتهایی که بلاک دارند
+// بدون وابستگی به سرویسهای خارجی: فقط اتصال مستقیم (اگر سایت بلاک بود، پیام شفاف فارسی میدهد)
 
 async function fetchText(url) {
-  const attempts = [{ url }, ...PROXIES.map(p => ({ url: p + url, proxy: true }))];
   let lastErr = 'no network';
-  for (const a of attempts) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 20000);
+    const to = setTimeout(() => ctrl.abort(), 25000);
     try {
-      const r = await fetch(a.url, { signal: ctrl.signal, headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
+      const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
       clearTimeout(to);
-      if (!r.ok) { lastErr = 'HTTP ' + r.status; if (a.proxy && r.status === 404) continue; }
+      if (!r.ok) { lastErr = 'HTTP ' + r.status; continue; }
       const t = await r.text();
       if (t && t.length > 400) return t;
+      lastErr = 'پاسخ خالی';
     } catch (e) { lastErr = e.message; clearTimeout(to); }
   }
-  throw new Error('دسترسی به سایت ممکن نشد (' + lastErr + '). اگر سایت خارجی است و بلاک کرده، از پروکسی استفاده کنید.');
+  throw new Error('دسترسی به سایت ممکن نشد (' + lastErr + '). این سرویس فقط خودِ سایت مقصد را میخواند (بدون سرویس خارجی)؛ اگر سایت قطع یا بلاک است، به‌جای لینک از «قالب‌ساز» یا «تبدیل قالب» استفاده کن.');
 }
 
 // ─── استخراج سیگنالهای استایل از HTML سایــت ───
@@ -80,7 +81,7 @@ function extractSignals(html, url) {
 }
 
 // ─── وبسایت خروجی: فروشگاه دیجیکالا-گونه با قابلیت کامل ───
-function digiPage(sig, { inner = '', ctaLabel = 'افزودن به سبد' } = {}) {
+function digiPage(sig, { inner = '', ctaLabel = 'افزودن به سبد', depth = 1 } = {}) {
   const [c1, c2, ac] = sig.palette;
   const cards = Array(8).fill(0).map((_, i) => {
     const imgs = [
@@ -149,7 +150,7 @@ footer li{margin-bottom:9px;font-size:.84rem}
 .fnav{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid #3a3e66;padding:14px 0;font-size:.78rem}
 .enamad{display:flex;gap:10px}.enamad span{border:1px solid #3a3e66;border-radius:10px;padding:8px 16px;font-size:.74rem}
 @media(max-width:860px){.search{display:none}.hbtn{display:none}.ftr{grid-template-columns:1fr 1fr}.hero h1{font-size:1.4rem}.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
-</style></head><body>
+${proCssExtra(sig.palette, depth)}</style></head><body>
 <header class="hdr"><div class="top-line"></div><div class="inner hrow">
   <a class="logo" href="#"><i>${sig.brand.trim().charAt(0)}</i>${sig.brand}</a>
   <div class="search"><input placeholder="جستجو در ${sig.brand}…"><button>🔍 جستجو</button></div>
@@ -206,7 +207,7 @@ export async function buildFromUrl(url, opts = {}) {
 <section class="sec"><div class="inner"><div class="sech"><h2>پرفروشترینها</h2><a href="#">مشاهده همه ←</a></div><div class="grid">${digiCards(sig, ctaLabel).slice(4)}</div></div></section>
 <section class="sec"><div class="inner"><div class="svc"><div><i>🚚</i><span><b>ارسال سریع</b><br><small>به سراسر کشور، ۲۴ ساعته</small></span></div><div><i>🛡️</i><span><b>ضمانت اصالت</b><br><small>کالای ۱۰۰٪ اورجینال</small></span></div><div><i>↩️</i><span><b>۷ روز بازگشت</b><br><small>بدون پرسش و قید</small></span></div><div><i>💳</i><span><b>پرداخت امن</b><br><small>درگاه رسمی + اقساط</small></span></div></div></div></section>`;
 
-  const main = digiPage(sig, { inner });
+  const main = digiPage(sig, { inner, depth: opts.depth || 1 });
 
   // راهنمای Word با تصاویر
   const guide = makeDocx({

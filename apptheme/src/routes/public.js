@@ -747,6 +747,7 @@ export function aiHub(req, res, { user, baseUrl, csrf }) {
         <a class="btn lg" href="/apps">📱 سفارش ساخت (با سطح‌بندی)</a>
         <a class="btn lg ghost" href="#tiers">مشاهده سطح‌ها</a>
       </div>
+      <p class="muted small" style="margin-top:14px">👥 کاربران می‌توانند با <b>اشتراک پرو</b> (برنزی تا اپیک — تنظیم‌شده توسط مدیریت) خودشان قالب، افزونه، فروشگاه‌ساز و اپ بسازند؛ قدرت هوش مصنوعی بهترین پلن پرو = ۵۰٪ قدرت ادمین.</p>
     </div>
   </div>
 </section>

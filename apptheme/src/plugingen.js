@@ -141,7 +141,7 @@ ${steps}
 فایل «راهنما با عکس (Word).docx» داخل همین پوشه — مراحل نصب را با تصویر نشان میدهد.`;
 }
 
-export function generatePlugin(spec) {
+export function generatePlugin(spec, depth = 1) {
   const files = [
     { name: `${spec.slug}/${spec.slug}.php`, data: pluginPhp(spec) },
     { name: `${spec.slug}/admin.css`, data: pluginCss(spec, true) },
@@ -152,6 +152,37 @@ export function generatePlugin(spec) {
       steps: ['فایل ZIP را از بخش دانلود دریافت کنید', 'در وردپرس به «افزونهها → بارگذاری» بروید', 'فایل را انتخاب و نصب کنید', 'دکمه فعالسازی را بزنید'],
       images: [{ kind: 'php-upload', cap: 'مرحله ۱: بارگذاری فایل افزونه در پیشخوان وردپرس', step: 1 }, { kind: 'wp-activate', cap: 'مرحله ۲: فعالسازی افزونه از فهرست', step: 2 }, { kind: 'wp-shortcode', cap: 'مرحله ۳: استفاده از شورتکدها در برگهها', step: 3 }],
     }) },
+    { name: 'preview.html', data: pluginPreview(spec, depth) },
   ];
   return { files, spec, zipName: `${spec.slug}.zip` };
+}
+
+// ─── پیشنمایش زنده افزونه: چه میبیند کاربر؟ ───
+function pluginPreview(spec, depth = 1) {
+  const [c1, c2] = spec.palette || ['#7c5cff', '#22d3ee'];
+  const isW = spec.isWoocommerce;
+  const cards = (spec.features || ['فرم تماس']).slice(0, Math.max(3, Math.ceil((spec.features || ['فرم تماس']).length * (0.4 + depth * 0.6)))).map((f, i) =>
+    `<div class="fcard"><div class="fic">${['✉️','🔔','🏷️','🛒','📊','⚙️','🔒','📈'][i % 8]}</div><b>${f}</b><small>فعالشده با شورتکد [${spec.slug}_${i}]</small></div>`).join('');
+  return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پیشنمایش افزونه ${spec.name}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Vazirmatn,Tahoma,sans-serif;direction:rtl;background:#f3f4f9;color:#1e2244;line-height:1.9}
+.h{background:linear-gradient(120deg,${c1},${c2});color:#fff;padding:38px 18px;text-align:center}.h h1{font-size:1.35rem}.h p{opacity:.9;font-size:.85rem;margin-top:6px}
+.w{max-width:860px;margin:auto;padding:20px 16px}
+.badge{display:inline-block;background:${c1}1a;color:${c1};border-radius:999px;padding:4px 14px;font-size:.78rem;font-weight:700;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:12px;margin-top:14px}
+.fcard{background:#fff;border:1px solid #e7e9f2;border-radius:14px;padding:18px;text-align:center}.fcard .fic{font-size:1.8rem;margin-bottom:8px}.fcard b{display:block;font-size:.95rem}.fcard small{color:#8a90a8;font-size:.76rem;direction:ltr;display:block;margin-top:4px}
+.demo{background:#fff;border:1px solid #e7e9f2;border-radius:16px;padding:20px;margin-top:18px}
+.demo input,.demo textarea{width:100%;border:1.5px solid #dfe2ee;border-radius:10px;padding:11px 13px;font:inherit;margin-bottom:10px}
+.demo button{background:${c1};color:#fff;border:0;border-radius:11px;padding:11px 24px;font:inherit;font-weight:700;cursor:pointer;width:100%;min-height:44px}
+.wp{background:#23264a;color:#c8cbe6;margin-top:14px;padding:14px;border-radius:12px;font-size:.78rem;text-align:center}
+@media(max-width:640px){.h{padding:28px 14px}.demo{padding:14px}.g{grid-template-columns:1fr}}
+</style></head><body>
+<div class="h"><span class="badge" style="background:#ffffff2b;color:#fff">🧩 پیشنمایش افزونه</span><h1>${spec.name}</h1><p>${isW ? 'سازگار با ووکامرس' : 'سازگار با وردپرس'} · تولیدشده با هوش مصنوعی اپتم${isW ? '' : ' — از پیشخوان نصب و فعالسازی کن'}</p></div>
+<div class="w">
+  <span class="badge">این همان چیزی است که مشتری شما میبیند</span>
+  <div class="g">${cards}</div>
+  <div class="demo"><h3 style="margin-bottom:10px">✉️ نمونه فرم افزونه (شورتکد در برگه)</h3>
+    <input placeholder="نام و نام خانوادگی"><input placeholder="ایمیل یا شماره"><textarea rows="4" placeholder="متن پیام…"></textarea>
+    <button type="button">ارسال پیام</button></div>
+  <div class="wp">پس از فعالسازی، شورتکدها را میتوانی در برگهها و محصولات ووکامرس استفاده کنی؛ راهنمای کامل با تصویر داخل فایل Word است.</div>
+</div></body></html>`;
 }

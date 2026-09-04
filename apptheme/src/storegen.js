@@ -4,7 +4,7 @@
 // + فایل راهنمای Word با تصویر برای هرکدام
 // ═══════════════════════════════════════════════════════════════
 import { makeDocx } from './docx.js';
-import { tierOf, tierExtras, estimatePrice } from './gencore.js';
+import { tierOf, tierExtras, estimatePrice, proCssExtra, cutByDepth } from './gencore.js';
 import { parsePrompt } from './promptgen.js';
 
 const FRAMEWORKS = { woocommerce: 'ووکامرس وردپرس', wordpress: 'وردپرس', django: 'جنگو (Python)', node: 'نود جیاس (Express)', html: 'HTML خالص' };
@@ -24,9 +24,9 @@ export function parseStorePrompt(text, tierKey = 'gold') {
 }
 
 // ─── هسته مشترک HTML فروشگاه ───
-export function storeHtml(spec, { withCart = true, withAuth = true } = {}) {
+export function storeHtml(spec, { withCart = true, withAuth = true, depth = 1 } = {}) {
   const [c1, c2, ac] = spec.palette;
-  const items = Array(8).fill(0).map((_, i) => `<div class="pd"><div class="pimg" style="background:linear-gradient(135deg,${c1}${(40 + i * 6) > 99 ? 99 : 40 + i * 6}cc,${c2}cc)"><span>${['🛍️','📱','💻','⌚','🎧','📷','👟','🧸'][i]}</span>${i % 2 ? `<i class="dis">٪${8 + i * 3}</i>` : ''}</div><div class="pb"><h4>${['محصول پرفروش ۱','گجت هوشمند ۲','لپتاپ اقتصادی','ساعت مچی X','هدفون بیسیم','دوربین رزولوشن','کتانی ورزشی','عروسک فانتزی'][i]}</h4><small>⭐ 4.${(8 + i) % 10} · ${14 + i} نظر</small><div class="pr"><b>${(890000 + i * 240000).toLocaleString('fa-IR')}</b><span>تومان</span></div>${withCart ? '<button class="buy">افزودن به سبد</button>' : '<button class="buy">مشاهده</button>'}</div></div>`).join('');
+  const items = Array(Math.max(3, Math.round(8 * depth))).fill(0).map((_, i) => `<div class="pd"><div class="pimg" style="background:linear-gradient(135deg,${c1}${(40 + i * 6) > 99 ? 99 : 40 + i * 6}cc,${c2}cc)"><span>${['🛍️','📱','💻','⌚','🎧','📷','👟','🧸'][i]}</span>${i % 2 ? `<i class="dis">٪${8 + i * 3}</i>` : ''}</div><div class="pb"><h4>${['محصول پرفروش ۱','گجت هوشمند ۲','لپتاپ اقتصادی','ساعت مچی X','هدفون بیسیم','دوربین رزولوشن','کتانی ورزشی','عروسک فانتزی'][i]}</h4><small>⭐ 4.${(8 + i) % 10} · ${14 + i} نظر</small><div class="pr"><b>${(890000 + i * 240000).toLocaleString('fa-IR')}</b><span>تومان</span></div>${withCart ? '<button class="buy">افزودن به سبد</button>' : '<button class="buy">مشاهده</button>'}</div></div>`).join('');
   return `
 <div class="store-hero"><div class="wrap"><span class="tag">✨ فروشگاه آنلاین ${spec.brand}</span><h1>خرید آسان، ارسال سریع، ضمانت اصالت</h1><p>تنوع هزاران کالا با بهترین قیمت و پشتیبانی واقعی</p><div class="row"><button class="btn">🛒 شروع خرید</button><button class="btn o">🏷️ تخفیفهای امروز</button></div></div></div>
 <div class="wrap store-feats"><div><b>🚚</b><span>ارسال ۲۴ ساعته</span></div><div><b>🛡️</b><span>ضمانت اصالت</span></div><div><b>↩️</b><span>۷ روز بازگشت</span></div><div><b>💳</b><span>پرداخت امن</span></div></div>
@@ -59,10 +59,12 @@ ul.products li.product{background:#fff;border-radius:14px;overflow:hidden;text-a
 ul.products li.product h2{font-size:.92rem;padding:10px 12px 4px;color:#1e2244}
 ul.products .price{color:var(--c1);font-weight:800;display:block;margin:6px 0}
 ul.products .button{background:var(--c1);color:#fff;padding:9px 18px;border-radius:999px;font-size:.83rem;text-decoration:none}
+@media(max-width:760px){.site-head .wr{flex-wrap:wrap;height:auto;padding:10px 14px}nav.menu{overflow-x:auto;width:100%;justify-content:flex-start;flex-wrap:nowrap}nav.menu a{white-space:nowrap}.woo-grid{grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:10px}ul.products li.product h2{font-size:.85rem}.btn{display:block;text-align:center}}
 `;
   const funcs = `<?php
 add_action('after_setup_theme', function(){ add_theme_support('woocommerce'); add_theme_support('title-tag'); add_theme_support('post-thumbnails'); });
-add_action('wp_enqueue_scripts', function(){ wp_enqueue_style('${spec.brand.replace(/\s+/g, '-')}-font', 'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css'); });
+// فونت Vazirmatn در صورت نصب از فونت‌های پیش‌فرض وردپرس استفاده می‌شود (بدون CDN خارجی — کاملاً آفلاین)
+add_action('wp_enqueue_scripts', function(){ wp_add_inline_style('wp-block-library', 'body{font-family:Vazirmatn,Tahoma,sans-serif}'); });
 // رنگهای برند را به خودِ ووکامرس هم بده
 add_filter('woocommerce_style_smallscreen_breakpoint','__return_false');
 function tl_brand_btn(){ return 'linear-gradient(135deg,' . (get_theme_mod('tl_c1', '${spec.palette[0]}')) . ',' . (get_theme_mod('tl_c2', '${spec.palette[1]}')) . ')'; }
@@ -150,7 +152,8 @@ urlpatterns = [path('', views.home), path('buy/<int:pk>/', views.buy)]
 .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;margin-top:24px}
 .p{background:#fff;border-radius:14px;padding:16px;text-align:center;border:1px solid #eceef5}
 .p .e{font-size:2.4rem}.p .pr{color:${spec.palette[0]};font-weight:800}
-button{background:${spec.palette[0]};color:#fff;border:0;border-radius:999px;padding:9px 20px;font:inherit;cursor:pointer}</style></head><body>
+button{background:${spec.palette[0]};color:#fff;border:0;border-radius:999px;padding:9px 20px;font:inherit;cursor:pointer}
+@media(max-width:640px){.g{grid-template-columns:1fr 1fr;gap:10px}.p h3{font-size:.9rem}.p .pr{font-size:.85rem}input{width:100%;margin-bottom:6px}}</style></head><body>
 <div class="h">🛍️ {{ brand }}</div><div class="w"><h1 style="color:${spec.palette[0]}">فروشگاه آنلاین</h1>
 {% if request.GET.ok %}<p style="color:#16a34a">✓ سفارش ثبت شد</p>{% endif %}
 <div class="g">{% for p in products %}<div class="p"><div class="e">{{ p.emoji }}</div><h3>{{ p.title }}</h3><div class="pr">{{ p.price }} تومان</div>
@@ -194,7 +197,8 @@ const cart = new Map();
 app.get('/', (req, res) => {
   const total = [...cart.values()].reduce((s, q, i) => s + q.qty * products[i]?.price, 0);
   res.send(\`<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${spec.brand}</title>
-<style>body{font-family:Vazirmatn,Tahoma,sans-serif;direction:rtl;background:#f5f6fa;color:#1e2244;margin:0}.h{background:linear-gradient(90deg,${spec.palette[0]},${spec.palette[1]});color:#fff;padding:15px 5vw;font-weight:900}.w{max-width:1150px;margin:auto;padding:0 16px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:22px}.p{background:#fff;border-radius:14px;padding:14px;text-align:center;border:1px solid #eceef5}.e{font-size:2.3rem}.pr{color:${spec.palette[0]};font-weight:800}form{margin-top:10px}input{width:70%;padding:8px;border:1.5px solid #ddd6f5;border-radius:8px;font:inherit}button{background:${spec.palette[1]};color:#fff;border:0;border-radius:999px;padding:9px 14px;font:inherit;cursor:pointer}</style></head><body>
+<style>body{font-family:Vazirmatn,Tahoma,sans-serif;direction:rtl;background:#f5f6fa;color:#1e2244;margin:0}.h{background:linear-gradient(90deg,${spec.palette[0]},${spec.palette[1]});color:#fff;padding:15px 5vw;font-weight:900}.w{max-width:1150px;margin:auto;padding:0 16px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:22px}.p{background:#fff;border-radius:14px;padding:14px;text-align:center;border:1px solid #eceef5}.e{font-size:2.3rem}.pr{color:${spec.palette[0]};font-weight:800}form{margin-top:10px}input{width:70%;padding:8px;border:1.5px solid #ddd6f5;border-radius:8px;font:inherit}button{background:${spec.palette[1]};color:#fff;border:0;border-radius:999px;padding:9px 14px;font:inherit;cursor:pointer}
+@media(max-width:640px){.g{grid-template-columns:1fr 1fr}input{width:100%;margin-bottom:6px}}</style></head><body>
 <div class="h">🛍️ ${spec.brand} — خرید آنلاین</div><div class="w"><h2 style="color:${spec.palette[0]}">محصولات ما</h2><div class="g">
 \${products.map((p, i) => \`<div class="p"><div class="e">\${p.emoji}</div><h3>\${p.title}</h3><div class="pr">\${p.price.toLocaleString('fa-IR')} تومان</div><form method="post" action="/buy/\${p.id}"><input name="name" placeholder="نام شما" required><button>خرید</button></form></div>\`).join('')}
 </div><p style="color:#5c6382;font-size:.85rem">🛒 سبد: \${total ? total.toLocaleString('fa-IR') + ' تومان' : 'خالی'}</p></div></body></html>\`);
@@ -223,8 +227,8 @@ app.listen(3002);`;
 }
 
 // ─── HTML خالص ───
-function htmlZip(spec) {
-  const body = storeHtml(spec);
+function htmlZip(spec, depth = 1) {
+  const body = storeHtml(spec, { depth });
   const page = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${spec.brand} — فروشگاه آنلاین</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:Vazirmatn,Tahoma,sans-serif;direction:rtl;background:#f5f6fa;color:#1e2244;line-height:1.9}
@@ -266,6 +270,7 @@ section{padding:34px 0}
 .tm b{display:block;color:var(--c1);margin-top:10px;font-size:.8rem}
 footer{background:#23264a;color:#c8cbe6;margin-top:30px;padding:26px 16px;text-align:center;font-size:.84rem}
 @media(max-width:760px){.banner-row{grid-template-columns:1fr}nav.lk{display:none}}
+${proCssExtra(spec.palette, depth)}
 </style></head><body>
 <header class="hdr"><div class="hrow"><a class="logo" href="#"><i>${spec.brand.trim().charAt(0)}</i>${spec.brand}</a><nav class="lk"><a class="on" href="#">خانه</a><a href="#">فروشگاه</a><a href="#">درباره</a><a href="#">تماس</a></nav></div></header>
 ${body}
@@ -275,14 +280,14 @@ ${body}
 }
 
 // ═══ جمعآوری نهایی بسته فروشگاهساز ═══
-export function generateStore(spec) {
+export function generateStore(spec, depth = 1) {
   const t = tierOf(spec.tier?.key || 'gold');
   let out;
   if (spec.framework === 'woocommerce') out = woocommerceZip(spec);
   else if (spec.framework === 'django') out = djangoZip(spec);
   else if (spec.framework === 'node') out = nodeZip(spec);
   else if (spec.framework === 'wordpress') { const w = woocommerceZip(spec); out = { files: w.files, name: w.name }; }
-  else out = htmlZip(spec);
+  else out = htmlZip(spec, depth);
   const guide = makeDocx({
     title: `راهنمای نصب فروشگاهساز ${spec.brand} (${FRAMEWORKS[spec.framework]})`,
     blocks: [
@@ -300,5 +305,8 @@ export function generateStore(spec) {
     ],
   });
   out.files.push({ name: 'راهنمای نصب فروشگاه (Word).docx', data: guide });
+  // پیشنمایش زنده: همهٔ فروشگاهسازها نسخهٔ دمو دارند (فایل + پیشنمایش)
+  const demo = htmlZip(spec, Math.max(depth, 0.6)).files[0].data;
+  if (!out.files.some(f => f.name === 'preview.html')) out.files.push({ name: 'preview.html', data: demo });
   return { files: out.files, zipName: out.name + '.zip', spec, tier: t };
 }

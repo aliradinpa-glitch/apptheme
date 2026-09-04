@@ -66,6 +66,28 @@
     pv.hidden = !previewable;
     pv.href = '/preview/ai/' + token;
     $('sfDl').onclick = function () { location.href = '/admin/ai/download?token=' + token; };
+    if (!$('sfVar')) {
+      $('sfOutActions').insertAdjacentHTML('beforeend',
+        '<button type="button" class="btn sm ghost" id="sfVar">🎲 متفاوت</button>' +
+        '<input class="input ltr" id="sfEditIn" style="max-width:210px;padding:7px 10px" placeholder="ویرایش: رنگ آبی کن">' +
+        '<button type="button" class="btn sm soft" id="sfRw">✍️ ویرایش</button>');
+      var vb = $('sfVar'), rb = $('sfRw');
+      vb.onclick = function () {
+        if (!lastBody) { window.tlToast('اول یک نسخه بساز', 'err'); return; }
+        seedNow++; doBuild(lastBody, seedNow);
+      };
+      rb.onclick = function () {
+        var t = $('sfEditIn').value.trim();
+        if (!t) { window.tlToast('دستور ویرایش را بنویس؛ مثلاً: رنگ اصلی آبی کن', 'err'); return; }
+        api('/admin/ai/rework', { token: token, edit: t }).then(function (d) {
+          if (!d.ok) { window.tlToast(d.error || 'خطا', 'err'); return; }
+          var n = (d.notes || []).join('؛ ');
+          showOut('<div class="alert ok"><b>✅ نسخهٔ ویرایششده ساخته شد: ' + (d.name || '') + '</b><br><span class="small">زمان: ' + (d.eta || '') + (n ? '<br>تغییرات: ' + n : '') + '</span></div>');
+          showActions(d.token, true, d.name);
+          publishZone(d.token, TIER_PRICES[tierKey] || 1490000);
+        });
+      };
+    }
   }
   function publishZone(token, defPrice) {
     $('sfPublishZone').innerHTML =
@@ -106,12 +128,15 @@
       var o = d.out;
       showOut('<div class="alert info" style="margin-top:4px"><b>🔮 تحلیل هوش مصنوعی:</b> ' + o.label +
         ' — پلتفرم: <b>' + o.platform + '</b><br><span class="small">' + (o.features || []).map(function (f) { return '✓ ' + f; }).join(' · ') + '</span>' +
-        '<br>💰 قیمت پیشنهادی: <b>' + Number(o.price).toLocaleString('fa-IR') + ' تومان</b> <span class="small muted">(سطح ' + (d.tierInfo ? d.tierInfo.icon + ' ' + d.tierInfo.label : '') + ' — ' + (d.tierInfo ? d.tierInfo.pages[0] + ' تا ' + d.tierInfo.pages[1] + ' صفحه' : '') + ')</span></div>');
+        '<br>💰 قیمت پیشنهادی: <b>' + Number(o.price).toLocaleString('fa-IR') + ' تومان</b> · ⏱ زمان تخمینی ساخت: <b>' + (d.eta || '') + '</b> <span class="small muted">(سطح ' + (d.tierInfo ? d.tierInfo.icon + ' ' + d.tierInfo.label : '') + ' — ' + (d.tierInfo ? d.tierInfo.pages[0] + ' تا ' + d.tierInfo.pages[1] + ' صفحه' : '') + ')</span></div>');
     });
   }
   ['pfPrompt', 'stPrompt', 'apPrompt', 'sfPrompt'].forEach(function (id) {
     var el = $(id); if (el) el.addEventListener('input', function () { clearTimeout(el._t); el._t = setTimeout(liveAnalyze, 600); });
   });
+
+  // ── نسخهها و ویرایش ──
+  var seedNow = 0, lastBody = null;
 
   // ── ساخت ──
   $('sfRun').addEventListener('click', function () {
@@ -144,7 +169,7 @@
       var fd = new FormData(); fd.append('file', f.files[0]);
       var qs2 = '?tier=' + tierKey + '&target=' + encodeURIComponent($('cvTarget').value) + '&brand=' + encodeURIComponent($('cvBrand').value);
       fetch('/admin/ai/convert' + qs2, {
-        method: 'POST', headers: { 'X-CSRF': csrf, 'Accept': 'application/json' },
+        method: 'POST', headers: { 'X-CSRF': csrf, 'Accept': 'application/json', 'Content-Type': 'application/zip' },
         body: f.files[0] // باینری خام ZIP
       }).then(function (r) { return r.json(); }).then(function (d) {
         setRun(null);
@@ -160,17 +185,23 @@
     var promptEl = kind === 'plugin' ? $('pfPrompt') : kind === 'store' ? $('stPrompt') : kind === 'app' ? $('apPrompt') : $('sfPrompt');
     var prompt = (promptEl && promptEl.value || '').trim();
     if (prompt.length < 6) { window.tlToast('پرامپت را بنویس (حداقل ۶ حرف)', 'err'); return; }
-    setRun('🧠 هوش مصنوعی در حال ساخت…');
-    showOut('<div class="gen-empty"><div style="font-size:2.2rem">🤖</div><p class="muted small">پرامپت تحلیل شد؛ در حال تولید فایلها (با راهنمای ورد)…</p></div>');
     var body = { kind: kind, prompt: prompt, tier: tierKey };
     if (kind === 'store') body.fw = fw;
-    if (kind === 'template') body.mode = (document.querySelector('#sfModes .mode-chip.on:not([data-mode=""])') || {}).getAttribute ? '' : '';
-    api('/admin/ai/build', body).then(function (d) {
+    doBuild(body, 0);
+  });
+
+  function doBuild(body, seed) {
+    lastBody = body;
+    setRun(seed ? '🎲 در حال ساخت نسخهٔ متفاوت…' : '🧠 هوش مصنوعی مافوقحرفهای در حال ساخت…');
+    showOut('<div class="gen-empty"><div style="font-size:2.2rem">🤖</div><p class="muted small">پرامپت تحلیل شد؛ در حال تولید فایلها (با راهنمای ورد + پیشنمایش)…</p></div>');
+    var b2 = Object.assign({}, body, { seed: seed || 0 });
+    api('/admin/ai/build', b2).then(function (d) {
       setRun(null);
       if (!d.ok) { showOut('<div class="alert err">' + (d.error || 'خطا') + '</div>'); return; }
-      showOut('<div class="alert ok"><b>✅ ' + d.name + ' ساخته شد!</b><br><span class="small muted">حجم: ' + Number(d.sizeKB).toLocaleString('fa-IR') + ' کیلوبایت · شامل فایل راهنمای Word با تصاویر مراحل نصب</span></div>');
-      showActions(d.token, d.previewable, d.name);
+      var str = 'قدرت: ' + (d.strength || 100) + '٪ · زمان: ' + (d.eta || '') + (d.varied ? ' · 🎲 نسخهٔ متفاوت' : '');
+      showOut('<div class="alert ok"><b>✅ ' + d.name + ' ساخته شد!</b><br><span class="small muted">حجم: ' + Number(d.sizeKB).toLocaleString('fa-IR') + ' کیلوبایت · ' + str + '<br>شامل: پیشنمایش زنده + فایل راهنمای Word با تصاویر مراحل نصب</span></div>');
+      showActions(d.token, !!d.previewable, d.name);
       publishZone(d.token, TIER_PRICES[tierKey] || 1490000);
     }).catch(function () { setRun(null); showOut('<div class="alert err">خطای شبکه</div>'); });
-  });
+  }
 })();

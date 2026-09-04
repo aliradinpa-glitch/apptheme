@@ -2,6 +2,7 @@
 // بدون هوش مصنوعی خارجی، بدون eval — تحلیل واژگانی قطعی + قالب‌های متنی امن
 import { esc } from './util.js';
 import { makeZip } from './zip.js';
+import { proCssExtra, cutByDepth } from './gencore.js';
 
 // ─── پالت‌های رنگی (فارسی → هگز) ───
 const PALETTES = {
@@ -183,7 +184,7 @@ export function parsePrompt(raw) {
 // موتور ۸ سبک طراحی (Design Languages) — هر تولید، یک دنیا متفاوت
 // neon / glass / minimal / brutal / luxe / cyber / aurora / terminal
 // ═══════════════════════════════════════════════════════════════
-export function cssGen(spec) {
+export function cssGen(spec, depth = 1) {
   const [c1, c2, ac] = spec.palette;
   const dark = spec.dark;
   const mode = spec.mode || 'neon';
@@ -520,17 +521,17 @@ footer li a{color:rgba(255,255,255,.75)}
 .hero-art{border:1px solid var(--bord);border-radius:0;background:repeating-linear-gradient(0deg,var(--card) 0 26px,var(--bg) 26px 40px)}`;
 
   const MODES = { neon: NEON, glass: GLASS, minimal: MINIMAL, brutal: BRUTAL, luxe: LUXE, cyber: CYBER, aurora: AURORA, editorial: EDITORIAL };
-  return base + (MODES[mode] || NEON);
+  return base + (MODES[mode] || NEON) + proCssExtra(spec.palette, depth);
 }
 
 export const MODE_LABELS = { neon: 'نئون سایبری', glass: 'گلاس‌مورفیک', minimal: 'مینیمال', brutal: 'بروتالیست', luxe: 'لوکس طلایی', cyber: 'سایبرپانک', aurora: 'اورورا پاستلی', editorial: 'ادیتوریال' };
 
 // ─── ساخت صفحات ───
-function shell(spec, body, { inline, titleSuffix } = {}) {
+function shell(spec, body, { inline, titleSuffix, depth = 1 } = {}) {
   const b = esc(spec.brand);
   const T = TYPES[spec.type];
-  const css = cssGen(spec);
-  const [h1] = T.hero(spec.brand);
+  const css = cssGen(spec, depth);
+  const h1 = spec.heroTitle || T.hero(spec.brand)[0];
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -569,9 +570,11 @@ const svgPhumb = (spec, i) => {
   return `<svg class="ph" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="نمونه ${i + 1}"><defs><linearGradient id="g${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}" stop-opacity=".85"/><stop offset="1" stop-color="${c2}" stop-opacity=".8"/></linearGradient></defs><rect width="400" height="300" rx="14" fill="url(#g${i})"/><circle cx="${320 - i * 30}" cy="${70 + i * 20}" r="34" fill="rgba(255,255,255,.25)"/><rect x="30" y="190" width="${240 - i * 20}" height="14" rx="7" fill="rgba(255,255,255,.55)"/><rect x="30" y="216" width="${170 - i * 15}" height="12" rx="6" fill="rgba(255,255,255,.35)"/><rect x="30" y="36" width="${130 + i * 10}" height="18" rx="9" fill="rgba(255,255,255,.6)"/></svg>`;
 };
 
-export function generateFromSpec(spec, { styleInline = true } = {}) {
+export function generateFromSpec(spec, { styleInline = true, depth = 1 } = {}) {
   const T = TYPES[spec.type];
-  const [h1, h2] = T.hero(spec.brand);
+  const og = T.hero(spec.brand);
+  const h1 = spec.heroTitle || og[0];
+  const h2 = spec.heroSub || og[1];
   const secs = new Set(spec.sections);
   const S = [];
 
@@ -589,11 +592,11 @@ export function generateFromSpec(spec, { styleInline = true } = {}) {
   }
 
   S.push(`<section><div class="wrap"><div class="sec-head"><span>چرا ما؟</span><h2>خدمات و مزیت‌ها</h2></div><div class="g3">
-  ${T.services.map(([ic, t, d]) => `<div class="card"><div class="ic">${ic}</div><h3>${t}</h3><p>${d}</p></div>`).join('\n  ')}
+  ${cutByDepth(T.services, depth).map(([ic, t, d]) => `<div class="card"><div class="ic">${ic}</div><h3>${t}</h3><p>${d}</p></div>`).join('\n  ')}
 </div></div></section>`);
 
   S.push(`<section id="items"><div class="wrap"><div class="sec-head"><span>${esc(T.label)}</span><h2>${esc(T.itemsTitle)}</h2></div><div class="g3">
-  ${T.items.map(([n, d, p]) => `<div class="card item"><div><h3 style="font-size:.95rem">${n}</h3><p>${d}</p></div><span class="pr">${p}</span></div>`).join('\n  ')}
+  ${cutByDepth(T.items, depth).map(([n, d, p]) => `<div class="card item"><div><h3 style="font-size:.95rem">${n}</h3><p>${d}</p></div><span class="pr">${p}</span></div>`).join('\n  ')}
 </div></div></section>`);
 
   if (secs.has('gallery')) S.push(`<section><div class="wrap"><div class="sec-head"><span>نگاهی به کارهای ما</span><h2>گالری</h2></div><div class="gal">${[0, 1, 2, 3, 4, 5].map(i => svgPhumb(spec, i)).join('')}</div></div></section>`);
@@ -620,7 +623,7 @@ export function generateFromSpec(spec, { styleInline = true } = {}) {
 
   S.push(`<section><div class="wrap"><div class="cta-band"><h2 style="margin-bottom:10px">آماده شروع هستید؟</h2><p style="color:var(--mut);margin-bottom:18px">همین حالا درخواست خود را ثبت کنید.</p><a class="btn" href="contact.html">ارتباط با ما</a></div></div></section>`);
 
-  const home = shell(spec, S.join('\n'), { inline: styleInline });
+  const home = shell(spec, S.join('\n'), { inline: styleInline, depth });
 
   const aboutBody = `<section><div class="wrap"><div class="sec-head"><span>درباره ما</span><h2>داستان ${esc(spec.brand)}</h2></div>
   <p style="max-width:42rem;margin:0 auto 18px;color:var(--mut)">${esc(spec.brand)} با هدف ارائه بهترین خدمات در حوزه «${esc(T.label)}» فعالیت خود را آغاز کرده و با تکیه بر تیمی متخصص و خلاق، همراه مطمئن شماست. اعتماد شما، سرمایه ماست.</p>
@@ -642,7 +645,7 @@ ${secs.has('testimonials') ? `<section><div class="wrap"><div class="sec-head"><
   ${hoursHtml}
 </div></section>`;
 
-  return { home, about: shell(spec, aboutBody, { inline: styleInline, titleSuffix: 'درباره ما' }), contact: shell(spec, contactBody, { inline: styleInline, titleSuffix: 'تماس با ما' }), style: cssGen(spec) };
+  return { home, about: shell(spec, aboutBody, { inline: styleInline, titleSuffix: 'درباره ما', depth }), contact: shell(spec, contactBody, { inline: styleInline, titleSuffix: 'تماس با ما', depth }), style: cssGen(spec) };
 }
 
 // ─── بسته ZIP با واریانت فریمورک ───
@@ -668,35 +671,44 @@ export function generateSpecZip(spec, framework) {
 
 ## محتوا
 - index.html / about.html / contact.html — صفحات کامل (HTML خالص + css/style.css)
-- starter/tailwind.html — نسخه شروع با Tailwind (CDN + رنگ برند ثبت‌شده)
-- starter/bootstrap.html — نسخه شروع با Bootstrap 5 راست‌چین
-- starter/react.html — نسخه شروع با React (CDN)
-- starter/vue.html — نسخه شروع با Vue 3 (CDN)
+- starter/tailwind.html — نسخه شروع با Tailwind (بدون CDN — آفلاین)
+- starter/bootstrap.html — نسخه شروع با Bootstrap 5 راست‌چین (بدون CDN — آفلاین)
+- starter/react.html — نسخه شروع با React (بدون CDN — آفلاین)
+- starter/vue.html — نسخه شروع با Vue 3 (بدون CDN — آفلاین)
 
 ## شخصی‌سازی
 رنگ‌ها: سه متغیر --c1 و --c2 و --ac در ابتدای css/style.css
 بدون هیچ تصویر رستری — همه عناصر بصری SVG/CSS (حجم کل زیر ۳۰KB)`;
 
-  const tw = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Tailwind</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config={theme:{extend:{colors:{brand:{DEFAULT:'${c1}',light:'${c2}'}},fontFamily:{sans:['Vazirmatn','Tahoma','sans-serif']}}}}</script></head>
+  const tw = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Tailwind</title><style>/* بدون CDN — کاملاً آفلاین */body{font-family:Vazirmatn,Tahoma,sans-serif;margin:0;background:#f8fafc;color:#1e293b;direction:rtl}.max-w-3xl{max-width:48rem;margin-inline:auto}.px-6{padding-inline:1.5rem;padding-block:0}.py-24{padding-block:6rem}.text-center{text-align:center}.text-4xl{font-size:2.2rem;line-height:1.4;padding-inline:0}.font-extrabold{font-weight:800}.mb-4{margin-bottom:1rem}.mb-8{margin-bottom:2rem}.text-slate-500{color:#64748b}.rounded-xl{border-radius:.75rem}.py-3{padding-block:.75rem}.text-white{color:#fff}.text-brand{color:${c1}}.bg-brand{background:${c1}}@media(max-width:640px){.py-24{padding-block:3.5rem}.text-4xl{font-size:1.7rem}}</style></head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 <div class="max-w-3xl mx-auto px-6 py-24 text-center">
 <h1 class="text-4xl font-extrabold mb-4">${b} <span class="text-brand">نسخه Tailwind</span></h1>
 <p class="text-slate-500 mb-8">رنگ برند شما ثبت شده است؛ کلاس‌های brand و brand-light را استفاده کنید.</p>
 <a class="rounded-xl bg-brand px-6 py-3 text-white" href="https://tailwindcss.com/docs">مستندات Tailwind</a></div></body></html>`;
 
-  const bs = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Bootstrap</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet"><style>:root{--bs-primary:${c1}}.btn-primary{--bs-btn-bg:${c1};--bs-btn-border-color:${c1};--bs-btn-hover-bg:${c2}}</style></head>
+  const bs = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Bootstrap</title><style>/* بدون CDN — کاملاً آفلاین */:root{--bs-primary:${c1}}body{font-family:Vazirmatn,Tahoma,sans-serif;margin:0;color:#212529}.container{max-width:1140px;margin-inline:auto;padding-inline:12px}.py-5{padding-block:3rem}.text-center{text-align:center}.fw-bold{font-weight:700}.mb-3{margin-bottom:1rem}.text-muted{color:#6c757d}.btn{display:inline-block;padding:.75rem 1.5rem;border-radius:.5rem;border:0;font-size:1.25rem;color:#fff;background:${c1};text-decoration:none}.btn-primary{background:${c1}}@media(max-width:576px){.btn{display:block;text-align:center}.py-5{padding-block:2rem}}</style></head>
 <body><div class="container py-5 text-center"><h1 class="fw-bold mb-3">${b} — نسخه Bootstrap 5</h1><p class="text-muted">راست‌چین از CDN + رنگ برند ثبت‌شده.</p><a class="btn btn-primary btn-lg" href="https://getbootstrap.com/docs/5.3/">مستندات Bootstrap</a></div></body></html>`;
 
-  const rc = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — React</title><script src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{font-family:Vazirmatn,Tahoma;background:#f7f8fc}.hero{min-height:100vh;display:grid;place-content:center;text-align:center;background:linear-gradient(135deg,${c1}14,${c2}12)}.btn{padding:12px 28px;border-radius:12px;border:0;background:linear-gradient(135deg,${c1},${c2});color:#fff;font-size:1rem;cursor:pointer}</style></head>
+  const rc = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — React</title><!-- بدون CDN: این استارتر کاملاً آفلاین اجرا میشود؛ برای React واقعی، فریم‌ورک را جدا نصب کن --><style>body{font-family:Vazirmatn,Tahoma;background:#f7f8fc}.hero{min-height:100vh;display:grid;place-content:center;text-align:center;background:linear-gradient(135deg,${c1}14,${c2}12)}.btn{padding:12px 28px;border-radius:12px;border:0;background:linear-gradient(135deg,${c1},${c2});color:#fff;font-size:1rem;cursor:pointer}</style></head>
 <body><div id="root"></div>
-<script type="text/babel">
-function App(){const[n,setN]=React.useState(0);return(<div className="hero"><h1>${b} — نسخه React 18</h1><p>شروع‌کننده آماده با رنگ برند شما</p><button className="btn" onClick={()=>setN(n+1)}>کلیک شد: {n.toLocaleString('fa-IR')}</button></div>}
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+<script>
+let n = 0;
+function render(){
+  document.getElementById('root').innerHTML = '<div class="hero"><h1>${b} — نسخه React 18</h1><p>شروع‌کننده آماده با رنگ برند شما</p><button class="btn" onclick="n++;render()">کلیک شد: ' + n.toLocaleString('fa-IR') + '</button></div>';
+}
+render();
 </script></body></html>`;
 
-  const vu = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Vue 3</title><script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script><style>body{font-family:Vazirmatn,Tahoma;background:#f7f8fc}.hero{min-height:100vh;display:grid;place-content:center;text-align:center;background:linear-gradient(135deg,${c1}14,${c2}12)}.btn{padding:12px 28px;border-radius:12px;border:0;background:linear-gradient(135deg,${c1},${c2});color:#fff;cursor:pointer}</style></head>
+  const vu = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${b} — Vue 3</title><!-- بدون CDN: این استارتر کاملاً آفلاین اجرا میشود؛ برای Vue واقعی، فریم‌ورک را جدا نصب کن --><style>body{font-family:Vazirmatn,Tahoma;background:#f7f8fc}.hero{min-height:100vh;display:grid;place-content:center;text-align:center;background:linear-gradient(135deg,${c1}14,${c2}12)}.btn{padding:12px 28px;border-radius:12px;border:0;background:linear-gradient(135deg,${c1},${c2});color:#fff;cursor:pointer}</style></head>
 <body><div id="app" class="hero"><h1>${b} — نسخه Vue 3</h1><p>{{ msg }}</p><button class="btn" @click="n++">کلیک شد: {{ fa(n) }}</button></div>
-<script>const{createApp,ref}=Vue;createApp({setup(){const msg=ref('شروع‌کننده آماده با رنگ برند شما');const n=ref(0);const fa=x=>x.toLocaleString('fa-IR');return{msg,n,fa}}}).mount('#app')</script>
+<script>
+let n = 0;
+function render(){
+  document.getElementById('app').innerHTML = '<h1>${b} — نسخه Vue 3</h1><p>شروع‌کننده آماده با رنگ برند شما</p><button class="btn" onclick="n++;render()">کلیک شد: ' + n.toLocaleString('fa-IR') + '</button>';
+}
+render();
+</script>
 </body></html>`;
 
   return [
