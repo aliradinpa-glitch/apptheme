@@ -844,3 +844,40 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; min-width:
 @media (max-width: 1020px) {
   .nav-links .m-auth { display: block; border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; color: var(--primary); }
 }
+
+/* ═══ بخش فروش «فروشگاه‌ساز هوشمند» در صفحه اصلی + صفحه /ai ═══ */
+.ai-sell-band { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--border); background: linear-gradient(150deg, #171d47, #10143a); padding: 40px 36px; }
+.ai-sell-glow { position: absolute; inset: 0; background:
+  radial-gradient(30rem 16rem at 90% -20%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 60%),
+  radial-gradient(24rem 14rem at -5% 110%, color-mix(in srgb, var(--primary-2) 20%, transparent), transparent 60%); pointer-events: none; }
+.ai-sell-in { position: relative; display: grid; grid-template-columns: 1.25fr .75fr; gap: 34px; align-items: center; }
+.ai-sell-txt h2 { font-size: 1.6rem; color: #fff; margin-bottom: 10px; }
+.ai-sell-txt p { color: #b9c2ec; max-width: 36rem; }
+.ai-sell-feats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.ai-sell-feats span { background: rgba(124,92,255,.14); border: 1px solid rgba(124,92,255,.3); color: #cfd5ff; padding: 6px 13px; border-radius: 999px; font-size: .8rem; }
+.ai-sell-art { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ai-tile { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 16px 10px; text-align: center; color: #fff; transition: .25s; animation: tileFloat 5s ease-in-out infinite; }
+.ai-tile span { font-size: 1.5rem; display: block; }
+.ai-tile b { font-size: .82rem; }
+.ai-tile:nth-child(2) { animation-delay: -.8s; } .ai-tile:nth-child(3) { animation-delay: -1.6s; }
+.ai-tile:nth-child(4) { animation-delay: -2.4s; } .ai-tile:nth-child(5) { animation-delay: -3.2s; }
+.ai-tile:nth-child(6) { animation-delay: -4s; }
+.ai-tile:hover { transform: translateY(-6px); background: rgba(124,92,255,.22); box-shadow: 0 16px 40px rgba(124,92,255,.25); }
+@keyframes tileFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (max-width: 900px) { .ai-sell-in { grid-template-columns: 1fr; } .ai-sell-art { grid-template-columns: repeat(3, 1fr); } .ai-sell-band { padding: 28px 20px; } }
+
+/* صفحه /ai */
+.tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.tier-public { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 16px; position: relative; overflow: hidden; transition: .25s; }
+.tier-public::before { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--grad); opacity: .75; }
+.tier-public:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.tp-ic { font-size: 1.9rem; margin-bottom: 6px; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 40%, transparent)); }
+.tp-name { font-size: 1.05rem; }
+.tp-price { font-size: 1.25rem; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 4px 0; }
+.tp-price small { font-size: .72rem; color: var(--muted); -webkit-text-fill-color: var(--muted); }
+.steps-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.step { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 16px; display: flex; gap: 12px; align-items: center; font-size: .9rem; }
+.step b { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--grad); color: #fff; display: grid; place-items: center; font-size: 1rem; box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 45%, transparent); }
+.ai-cta { text-align: center; border-radius: 24px; padding: 44px 24px; border: 1px solid var(--border); background: radial-gradient(24rem 12rem at 50% -10%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 70%), var(--surface); }
+.ai-cta h2 { font-size: 1.5rem; margin-bottom: 6px; }
+.ai-cta .btn { margin-top: 16px; }

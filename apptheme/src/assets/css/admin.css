@@ -421,3 +421,42 @@ h3 { font-weight: 800; }
   .tbl td[colspan] { grid-column: 1 / -1; }
   .admin-topbar .btn { display: none; }
 }
+
+/* ═══ استودیوی هوش مصنوعی ═══ */
+.ai-hero { border-radius: 22px; border: 1px solid var(--border); background: linear-gradient(160deg, #171d47, #10143a); padding: 26px 24px 20px; margin-bottom: 18px; position: relative; overflow: hidden; }
+.ai-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(26rem 12rem at 90% -20%, rgba(124,92,255,.3), transparent 60%), radial-gradient(20rem 12rem at 0% 120%, rgba(34,211,238,.16), transparent 60%); pointer-events: none; }
+.ai-hero-in { position: relative; }
+.ai-hero h2 { color: #fff; }
+.ai-hero p { color: #b9c2ec; max-width: 46rem; }
+.tier-row { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
+.tier-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 14px 12px; cursor: pointer; transition: .22s; text-align: center; color: #fff; }
+.tier-card:hover { transform: translateY(-3px); background: rgba(124,92,255,.16); }
+.tier-card.on { background: linear-gradient(135deg, var(--primary), #a06bff); border-color: transparent; box-shadow: 0 12px 30px rgba(124,92,255,.4); }
+.tier-card.on .tc-price { -webkit-text-fill-color: #fff; color: #fff; }
+.tc-ic { font-size: 1.5rem; }
+.tc-name { font-weight: 800; font-size: .92rem; margin: 4px 0 2px; }
+.tc-name small { display: block; font-size: .68rem; opacity: .7; font-weight: 500; }
+.tc-price { font-size: .88rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.tc-price small { font-size: .62rem; }
+.tc-desc { font-size: .68rem; opacity: .75; margin: 6px 0; min-height: 2.4em; }
+.tc-bars { display: flex; gap: 3px; justify-content: center; margin: 8px 0; }
+.tc-bars i { width: 12px; height: 5px; border-radius: 99px; background: rgba(255,255,255,.16); }
+.tc-bars i.on { background: var(--grad); box-shadow: 0 0 8px rgba(124,92,255,.6); }
+.tc-feats { font-size: .62rem; opacity: .8; display: grid; gap: 2px; }
+.studio-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .studio-grid { grid-template-columns: 1fr; } }
+.sf-head { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px; }
+.sf-tab { border: 1.5px solid var(--border); background: var(--surface-2); color: var(--muted); border-radius: 12px; padding: 8px 14px; font-size: .82rem; cursor: pointer; transition: .18s; font-family: inherit; font-weight: 600; }
+.sf-tab:hover { border-color: var(--primary); color: var(--primary); }
+.sf-tab.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(124,92,255,.35); }
+.sf-panel { display: none; }
+.sf-panel.on { display: block; animation: viewIn .3s ease; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } }
+.tier-note { margin-top: 14px; background: color-mix(in srgb, var(--primary) 8%, var(--surface-2)); border: 1px dashed color-mix(in srgb, var(--primary) 40%, transparent); border-radius: 12px; padding: 10px 14px; font-size: .84rem; }
+.sf-out { min-height: 180px; }
+.sf-out-panel .gen-empty { padding: 40px 16px; }
+.ltr { direction: ltr; }
+
+/* حالت ساده استودیو */
+.sf-simple-line{display:flex;align-items:center;gap:8px;margin:10px 0 2px;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
+.sf-simple-line input{accent-color:var(--primary)}

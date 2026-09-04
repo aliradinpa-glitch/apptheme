@@ -2,6 +2,7 @@
 import { esc, money, faNum, faDateTime } from './util.js';
 import { page } from './render.js';
 import { findOne, findMany, insert, updateOne, getDb } from './db.js';
+import { TIERS, tierOf } from './gencore.js';
 import { APP_NAME } from './config.js';
 import { cleanText } from './security.js';
 import { csrfOk } from './auth.js';
@@ -64,6 +65,10 @@ export function estimateApp(promptText, opts = {}) {
   if (opts.web) total += appPart * 0.2;
 
   const weeks = Math.max(2, Math.min(10, 2 + Math.ceil(found.length * 0.7) + (needsBackend ? 1 : 0)));
+  // سطح هوش مصنوعی: هرچه بالاتر، بخش‌ها و کیفیت بیشتر (+ هزینه منطقی)
+  const tier = tierOf(opts.tier || 'gold');
+  const tierBoost = [0, .0, .12, .28, .5, .85, 1.35][tier.level - 1] || 0;
+  total = round50k(total * (1 + tierBoost));
   const t = round50k(total);
   return {
     low: round50k(t * 0.9), high: round50k(t * 1.15), total: t,
@@ -130,6 +135,7 @@ export function renderAppsHome(req, res, ctx) {
       </div>
       <div class="hero-stats">
         <div><div class="num">${fa(active + 37)}</div><div class="lbl">پروژه در جریان</div></div>
+        <div><div class="num">۶ سطح</div><div class="lbl">برنز تا اپیک</div></div>
         <div><div class="num">${fa(done + 112)}</div><div class="lbl">اپ تحویل‌شده</div></div>
         <div><div class="num">${fa(POLICY.REFUND_FINAL)}٪</div><div class="lbl">تضمین بازگشت وجه</div></div>
       </div>
@@ -238,7 +244,13 @@ export function renderAppWizard(req, res, ctx) {
       </fieldset>
 
       <fieldset class="wiz-step" data-step="5" hidden>
-        <h3>زمان، بودجه و الهام</h3>
+        <h3>زمان، بودجه و سطح هوش مصنوعی</h3>
+        <div class="field" style="margin-bottom:14px">
+          <label class="req">سطح هوش مصنوعی (هرچه بالاتر، بخش‌های بیشتر و هوش مصنوعی قوی‌تر)</label>
+          <div class="chip-grid" id="tierChips">
+            ${TIERS.map((t, i) => `<label class="chip ${i === 2 ? 'on' : ''}"><input type="radio" name="tier" value="${t.key}" ${i === 2 ? 'checked' : ''}> ${t.icon} ${t.label} <small class="muted">(${Math.round(t.base / 100000) / 10}M)</small></label>`).join('')}
+          </div>
+        </div>
         <div class="form-grid">
           <div class="field"><label>تا چه زمانی می‌خواهی؟</label>
             <select class="select" name="deadline"><option value="asap">فوری‌تر بهتر</option><option value="1" selected>۱ ماهه</option><option value="2">۲ تا ۳ ماه</option><option value="flex">انعطاف‌پذیر</option></select>
@@ -285,7 +297,8 @@ export function handleAppOrder(req, res, ctx) {
 
   // متن تشخیص ویژگی از انتخاب‌ها + توضیح کاربر
   const featText = feats.map(k => SPEC_LABELS.feats[k] || '').join(' ');
-  const est = estimateApp(`${featText} ${desc} ${body.name || ''}`, { ios, web, backend });
+  const tierKey = TIERS.some(t => t.key === body.tier) ? body.tier : 'gold';
+  const est = estimateApp(`${featText} ${desc} ${body.name || ''}`, { ios, web, backend, tier: tierKey });
 
   // مشخصات فشرده (فایل کم‌حجم — کلیدهای کوتاه)
   const spec = {
@@ -294,7 +307,7 @@ export function handleAppOrder(req, res, ctx) {
     th: /^#[0-9a-fA-F]{6}$/.test(body.theme || '') ? body.theme : '#6d5ef2',
     dk: body.dark === '0' ? 0 : 1, lg: body.logo === 'on' ? 1 : 0,
     dl: cleanText(body.deadline, 8), bud: Math.max(0, Number(body.budget) || 0),
-    ins: cleanText(body.inspire, 200), ct: cleanText(body.contact, 100),
+    ins: cleanText(body.inspire, 200), ct: cleanText(body.contact, 100), tier: tierKey,
   };
 
   const code = 'APP-' + (100 + getDb().projects.reduce((m, p) => Math.max(m, Number(String(p.code).split('-')[1]) || 100), 100) + 1);

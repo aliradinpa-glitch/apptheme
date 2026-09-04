@@ -102,6 +102,7 @@ export function migrate(d) {
   d.licenses = d.licenses || [];
   d.transactions = d.transactions || [];
   d.withdrawals = d.withdrawals || [];
+  d.aiProducts = d.aiProducts || []; // محصولات استودیوی هوش مصنوعی
   for (const u of d.users || []) {
     if (u.wallet === undefined) u.wallet = 0;
     if (u.sheba === undefined) u.sheba = '';

@@ -9,3 +9,11 @@ git add -A
 git commit -m "update to v1.9"
 git remote add origin https://github.com/aliradinpa-glitch/apptheme.git
 git push -u origin main
+
+
+
+data/db.json داخل ZIP هست (تازه و تمیز: ۶ قالب نمونه + ۳ مشتری + حساب مدیر).
+https://apptheme.onrender.com/login
+
+حساب مدیر روی دیتابیس تازه هم کار میکند: admin@apptheme.ir  pass: Admin@1403 .
+.

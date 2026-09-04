@@ -65,6 +65,36 @@ export function home(req, res, { user, baseUrl, csrf }) {
   </div>
 </section>
 
+<section class="section" id="ai-builder" style="padding-top:10px">
+  <div class="container">
+    <div class="ai-sell-band">
+      <div class="ai-sell-glow"></div>
+      <div class="ai-sell-in">
+        <div class="ai-sell-txt">
+          <span class="badge primary" style="display:inline-flex;margin-bottom:10px">🤖 فروشگاه‌ساز هوشمند — ۶ سطح از برنز تا اپیک</span>
+          <h2>فروشگاه اینترنتی خودت را با هوش مصنوعی بساز</h2>
+          <p>لینک سایت موردعلاقه‌ات را بده (حتی دیجی‌کالا!) — هوش مصنوعی آن را تحلیل می‌کند و قالب، افزونه وردپرس/ووکامرس، فروشگاه‌ساز جنگو/نود/HTML و حتی اپ اندروید برایت می‌سازد؛ همراه <b>فایل راهنمای Word با تصاویر مراحل نصب</b>.</p>
+          <div class="ai-sell-feats">
+            <span>🌐 کپی سبک از لینک</span><span>🧩 افزونه‌ساز وردپرس</span><span>🏪 فروشگاه‌ساز ۵ پلتفرم</span><span>📱 اپ اندروید PWA</span><span>📄 راهنمای ورد با عکس</span>
+          </div>
+          <div class="hero-cta" style="margin-top:22px">
+            <a class="btn lg" href="/ai">🚀 شروع با هوش مصنوعی</a>
+            <a class="btn lg ghost" href="/apps">سفارش اپ اندروید</a>
+          </div>
+        </div>
+        <div class="ai-sell-art" aria-hidden="true">
+          <div class="ai-tile t1"><span>🥉</span><b>برنزی</b></div>
+          <div class="ai-tile t2"><span>🥈</span><b>نقره‌ای</b></div>
+          <div class="ai-tile t3"><span>🥇</span><b>طلایی</b></div>
+          <div class="ai-tile t4"><span>💎</span><b>VIP</b></div>
+          <div class="ai-tile t5"><span>👑</span><b>لجندری</b></div>
+          <div class="ai-tile t6"><span>🔥</span><b>اپیک</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section" id="why">
   <div class="container">
     <div class="section-head"><h2>چرا اپ‌تم؟</h2></div>
@@ -694,3 +724,91 @@ export function resetForm({ csrf, token, query = {} }) {
   return page({ title: `رمز جدید | ${APP_NAME}`, desc: 'تعیین رمز', body, noindex: true, csrf });
 }
 
+
+// ═══ صفحه عمومی «شهر هوش مصنوعی» — برای فروش فروشگاه‌ساز/افزونه/قالب ═══
+export function aiHub(req, res, { user, baseUrl, csrf }) {
+  const tierCards = [
+    ['🥉', 'برنزی', '۴۹۰,۰۰۰', 'ساده و سریع — ۱ تا ۳ صفحه، پایه‌ترین امکانات', 'برای شروع و تست ایده'],
+    ['🥈', 'نقره‌ای', '۸۹۰,۰۰۰', '۳ تا ۵ صفحه + افکت‌های نئونی و بخش‌های بیشتر', 'سایت شخصی و کسب‌وکار کوچک'],
+    ['🥇', 'طلایی', '۱,۴۹۰,۰۰۰', '۵ تا ۸ صفحه + مودال، فیلتر، صفحه تخصصی', 'حرفه‌ای‌ها و فروشگاه‌ها'],
+    ['💎', 'VIP', '۲,۴۹۰,۰۰۰', '۸ تا ۱۲ صفحه + سبد خرید، پنل کاربری، درگاه دمو', 'فروشگاه کامل'],
+    ['👑', 'لجندری', '۴,۴۹۰,۰۰۰', '۱۲ تا ۱۸ صفحه + پنل ادمین، چندزبانه، انیمیشن سینمایی', 'برندهای جدی'],
+    ['🔥', 'اپیک', '۷,۴۹۰,۰۰۰', '۱۸ تا ۳۰ صفحه + PWA، API، سئوی پیشرفته', 'پروژه‌های بزرگ'],
+  ];
+  const aiProducts = findMany('products', p => p.published && (p.tags || []).includes('هوش مصنوعی')).slice(0, 8);
+  const body = `
+<section class="hero">
+  <div class="container inner" style="grid-template-columns:1fr">
+    <div style="text-align:center;max-width:44rem;margin:auto">
+      <span class="badge primary" style="margin-bottom:18px; display:inline-flex;">🤖 استودیوی هوش مصنوعی اپ‌تم</span>
+      <h1>فروشگاه‌ساز، افزونه، قالب و اپ <span class="grad-text">با یک پرامپت</span></h1>
+      <p class="lead" style="margin-inline:auto">لینک بده → هوش مصنوعی تحلیل می‌کند → قالب حرفه‌ای می‌سازد. خروجی برای وردپرس، ووکامرس، جنگو، نود جی‌اس و HTML خالص + فایل راهنمای Word با تصاویر مراحل نصب. ۶ سطح: برنزی تا اپیک.</p>
+      <div class="hero-cta" style="justify-content:center">
+        <a class="btn lg" href="/apps">📱 سفارش ساخت (با سطح‌بندی)</a>
+        <a class="btn lg ghost" href="#tiers">مشاهده سطح‌ها</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="tiers" style="padding-top:0">
+  <div class="container">
+    <div class="section-head"><h2>سطح‌های هوش مصنوعی — هرچه بالاتر، بخش‌های بیشتر</h2><span class="muted small">قیمت‌های پایه؛ در سفارش نهایی با تخفیف/توافق تعدیل می‌شود</span></div>
+    <div class="tier-grid">
+      ${tierCards.map(([ic, name, price, desc, fit]) => `
+      <div class="tier-public">
+        <div class="tp-ic">${ic}</div>
+        <b class="tp-name">${name}</b>
+        <div class="tp-price">${price} <small>تومان</small></div>
+        <p class="muted small">${desc}</p>
+        <span class="badge soft" style="margin-top:8px">${fit}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:6px">
+  <div class="container">
+    <div class="section-head"><h2>چه چیزهایی می‌توانی سفارش بدهی؟</h2></div>
+    <div class="why-grid">
+      ${[
+        ['🌐', 'سایت از لینک', 'لینک هر سایتی را بده؛ هوش مصنوعی ساختار، رنگ و ناوبری آن را تحلیل و همان سبک را برایت پیاده می‌کند.'],
+        ['🏪', 'فروشگاه‌ساز', 'فروشگاه کامل برای ووکامرس، وردپرس، جنگو، نود یا HTML — با سبد خرید و درگاه.'],
+        ['🧩', 'افزونه‌ساز', 'پرامپت بده؛ افزونه وردپرس/ووکامرس با فایل راهنمای Word (عکس مراحل نصب) تحویل بگیر.'],
+        ['🪄', 'قالب‌ساز', '۸ سبک طراحی (نئون، گلاس، بروتال، لوکس، سایبرپانک، اورورا، مینیمال، ادیتوریال).'],
+        ['📦', 'تبدیل قالب', 'فایل ZIP قالب قدیمی‌ات را بده؛ هوش مصنوعی آن را به نسخهٔ حرفه‌ای‌تر تبدیل می‌کند.'],
+        ['📱', 'اپ اندروید', 'با همان سطح‌بندی؛ اپ نصب‌شدنی روی گوشی (PWA) با ناوبری، سبد و اعلان.'],
+      ].map(([ic, t, d]) => `<div class="card why-card"><div class="ic" style="font-size:1.5rem">${ic}</div><h3>${t}</h3><p>${d}</p></div>`).join('')}
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="section-head"><h2>مراحل کار (فقط ۳ قدم)</h2></div>
+    <div class="steps-row">
+      <div class="step"><b>۱</b><span>پرامپت یا لینک را بده و سطح را انتخاب کن (برنز → اپیک)</span></div>
+      <div class="step"><b>۲</b><span>هوش مصنوعی می‌سازد: فایل‌ها + راهنمای Word با عکس مراحل نصب</span></div>
+      <div class="step"><b>۳</b><span>دانلود و نصب روی هاست/سرور خودت — همه‌چیز آماده است</span></div>
+    </div>
+  </div>
+</section>
+
+${aiProducts.length ? `<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="section-head"><h2>ساخته‌شده با هوش مصنوعی (در فروشگاه)</h2><a class="muted small" href="/templates">همه قالب‌ها ←</a></div>
+    <div class="grid-products">${aiProducts.map(p => productCard(p, user)).join('')}</div>
+  </div>
+</section>` : ''}
+
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="ai-cta">
+      <h2>آماده‌ای فروشگاهت را بسازی؟ 🚀</h2>
+      <p class="muted">سفارش ساخت را ثبت کن؛ در کمتر از ۲۴ ساعت برآورد قیمت نهایی را می‌گیری.</p>
+      <a class="btn lg" href="/apps">📱 ثبت سفارش با هوش مصنوعی</a>
+    </div>
+  </div>
+</section>`;
+  return page({ user, title: `استودیوی هوش مصنوعی | ${APP_NAME}`, desc: 'ساخت قالب، افزونه، فروشگاه‌ساز و اپ اندروید با هوش مصنوعی — ۶ سطح از برنزی تا اپیک', url: baseUrl + '/ai', body, csrf });
+}

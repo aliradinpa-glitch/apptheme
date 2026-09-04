@@ -7,13 +7,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
-import { PORT, HOST, BODY_LIMIT, SITE_URL } from './src/config.js';
+import { PORT, HOST, BODY_LIMIT, UPLOAD_LIMIT, SITE_URL } from './src/config.js';
 import { loadDb, getDb, findOne, persist, dbSyncInit } from './src/db.js';
 import { getSessionUser, anonCsrf, csrfOk } from './src/auth.js';
 import { securityHeaders, rateLimit } from './src/security.js';
 import * as pub from './src/routes/public.js';
 import * as api from './src/routes/api.js';
 import * as admin from './src/routes/admin.js';
+import * as aiadmin from './src/aiadmin.js';
+import { makeZip } from './src/zip.js';
+import { buildFromUrl } from './src/sitegen.js';
+import { convertTemplate } from './src/converter.js';
+import { randomToken } from './src/security.js';
+
 import * as shop from './src/shop.js';
 import * as apporder from './src/apporder.js';
 import * as account from './src/routes/account.js';
@@ -61,26 +67,38 @@ const errPage = () => `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta char
 <div class="auth-wrap"><div class="card auth-card center"><div style="font-size:3.4rem;filter:drop-shadow(0 0 22px rgba(251,113,133,.5))">⚠️</div><h1 style="justify-content:center">خطای غیرمنتظره</h1><p class="sub">مشکلی پیش آمد؛ دوباره تلاش کنید.</p><a class="btn" href="/">بازگشت</a></div></div></body></html>`;
 
 // ─── بدنه درخواست ───
-function readBody(req) {
+function readBody(req, { raw = false } = {}) {
   return new Promise((resolve, reject) => {
+    const limit = raw ? UPLOAD_LIMIT : BODY_LIMIT;
     let size = 0; const chunks = [];
     req.on('data', c => {
       size += c.length;
-      if (size > BODY_LIMIT) { reject(new Error('body-too-large')); req.destroy(); return; }
+      if (size > limit) { reject(new Error('body-too-large')); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => {
-      const raw = Buffer.concat(chunks).toString('utf8');
+      const buf = Buffer.concat(chunks);
+      if (raw) { resolve(buf) ; return; } // آپلود باینری (ZIP)
       const type = (req.headers['content-type'] || '').split(';')[0].trim();
+      const rawStr = buf.toString('utf8');
       try {
-        if (type === 'application/json') resolve(JSON.parse(raw || '{}'));
-        else if (type === 'application/x-www-form-urlencoded') resolve(Object.fromEntries(new URLSearchParams(raw)));
+        if (type === 'application/json') resolve(JSON.parse(rawStr || '{}'));
+        else if (type === 'application/x-www-form-urlencoded') resolve(Object.fromEntries(new URLSearchParams(rawStr)));
         else resolve({});
       } catch { resolve({}); }
     });
     req.on('error', reject);
   });
 }
+
+
+// ─── ذخیرهٔ خروجیهای استودیو روی دیسک (data/ai-builds) — برای ZIPهای بزرگ ───
+const __dir = path.dirname(fileURLToPath(import.meta.url));
+const AI_BUILDS_DIR = path.join(__dir, 'data', 'ai-builds');
+function saveAiBuild(token, buf) {
+  try { fs.mkdirSync(AI_BUILDS_DIR, { recursive: true }); fs.writeFileSync(path.join(AI_BUILDS_DIR, token + '.zip'), buf); } catch (e) { console.error('saveAiBuild:', e.message); }
+}
+function readAiBuild(token) { try { return fs.readFileSync(path.join(AI_BUILDS_DIR, token + '.zip')); } catch { return null; } }
 
 // ─── استاتیک ───
 const MIME = {
@@ -163,7 +181,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/sitemap.xml') {
       const products = getDb().products.filter(p => p.published);
-      const urls = ['', '/templates', '/apps', '/terms', ...products.map(p => `/templates/${encodeURIComponent(p.slug)}`)];
+      const urls = ['', '/templates', '/apps', '/ai', '/terms', ...products.map(p => `/templates/${encodeURIComponent(p.slug)}`)];
       res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
       return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(x => `<url><loc>${baseUrl}${x}</loc><changefreq>weekly</changefreq></url>`).join('\n')}\n</urlset>`);
     }
@@ -201,8 +219,10 @@ const server = http.createServer(async (req, res) => {
 
     // ═══ POST ═══
     if (req.method === 'POST') {
-      const body = await readBody(req);
+      const isZipPost = (req.headers['content-type'] || '').includes('zip');
+      const body = isZipPost ? {} : await readBody(req);
       ctx.body = body;
+      ctx.rawBody = isZipPost ? await readBody(req, { raw: true }) : null;
       let m;
 
       if (pathname === '/setup') {
@@ -290,6 +310,55 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/admin/purge-demo') return handle(admin.handlePurgeDemo(req, res, ctx));
       if (pathname === '/admin/generator/generate') return handle(admin.handleGenerate(req, res, ctx));
       if (pathname === '/admin/generator/publish') return handle(admin.handleGenPublish(req, res, ctx));
+      // ═══ استودیوی هوش مصنوعی (POST) ═══
+      if (pathname === '/admin/ai/analyze') return handle(aiadmin.apiAiAnalyze(req, res, ctx));
+      if (pathname === '/admin/ai/build') return handle(aiadmin.apiAiBuild(req, res, ctx));
+      if (pathname === '/admin/ai/publish') return handle(aiadmin.aiPublish(req, res, ctx));
+      if (pathname === '/admin/ai/linkbuild') {
+        const url = String(ctx.body.url || '');
+        if (!/^https?:\/\//i.test(url)) { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); return res.end(JSON.stringify({ ok: false, error: 'لینک معتبر بده' })); }
+        buildFromUrl(url).then(({ sig, main, guide, modeLabel }) => {
+          const token = randomToken(20);
+          const zipBuf = makeZip([
+            { name: 'index.html', data: main },
+            { name: 'css/style.css', data: '' },
+            { name: 'راهنمای نصب (Word).docx', data: guide },
+          ]);
+          saveAiBuild(token, zipBuf);
+          import('./src/db.js').then(({ insert }) => {
+            insert('aiProducts', { token, kind: 'link', title: `وب‌سایت ${sig.brand} (الهام از لینک)`, price: 0, discount: 0, published: false, data: { spec: { brand: sig.brand, palette: sig.palette, mode: sig.mode, sourceUrl: url }, prompt: url }, createdAt: new Date().toISOString() });
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ ok: true, token, name: sig.brand, sizeKB: Math.round(zipBuf.length / 1024), modeLabel, palette: sig.palette, sourceUrl: url }));
+          });
+        }).catch(e => {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: false, error: 'خطا در تحلیل سایت: ' + e.message }));
+        });
+        return;
+      }
+      if (pathname === '/admin/ai/convert' && (req.headers['content-type'] || '').includes('zip')) {
+        Promise.resolve(ctx.rawBody || Buffer.alloc(0)).then(buf => {
+          try {
+            const token = randomToken(20);
+            const tier = String(ctx.query.tier || 'gold');
+            const target = String(ctx.query.target || '');
+            const brand = String(ctx.query.brand || '');
+            const prompt = String(ctx.query.prompt || '');
+            const { files, spec, analysis, tier: tInfo } = convertTemplate(buf, { tierKey: tier, target, brand, prompt });
+            const zipBuf = makeZip(files);
+            saveAiBuild(token, zipBuf);
+            import('./src/db.js').then(({ insert }) => {
+              insert('aiProducts', { token, kind: 'convert', title: `قالب تبدیل‌شده ${spec.brand}`, price: tInfo.base, discount: 0, published: false, data: { spec: { brand: spec.brand, palette: analysis.palette, from: analysis.platform, to: tInfo.key }, prompt }, createdAt: new Date().toISOString() });
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({ ok: true, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), analysis: { pages: analysis.pageCount, platform: analysis.platform, palette: analysis.palette, brand: analysis.brand }, tier: tInfo.label }));
+            });
+          } catch (e) {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        }).catch(() => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify({ ok: false, error: 'فایل ZIP ارسال شود' })); });
+        return;
+      }
       if ((m = pathname.match(/^\/admin\/products\/new$/))) return handle(admin.handleProductSave(req, res, ctx));
       if ((m = pathname.match(/^\/admin\/products\/(\d+)\/edit$/))) return handle(admin.handleProductSave(req, res, ctx, parseInt(m[1], 10)));
       if ((m = pathname.match(/^\/admin\/products\/(\d+)\/delete$/))) return handle(admin.handleProductDelete(req, res, ctx, parseInt(m[1], 10)));
@@ -455,10 +524,31 @@ const server = http.createServer(async (req, res) => {
 
       // سفارش اپ
       if (pathname === '/apps') return finish(200, apporder.renderAppsHome(req, res, ctx));
+      if (pathname === '/ai') return finish(200, pub.aiHub(req, res, ctx));
       if ((m = pathname.match(/^\/preview\/gen\/([a-f0-9]{32})$/))) {
         const gen = findOne('generatedTemplates', g => g.token === m[1]);
         if (!gen) return finish(404, notFoundPage());
         return admin.serveGenPreview(req, res, gen);
+      }
+      if ((m = pathname.match(/^\/preview\/ai\/([A-Za-z0-9]+)$/))) {
+        const rec = findOne('aiProducts', x => x.token === m[1]);
+        if (!rec || !(rec.data && rec.data.full && rec.data.full.home)) return finish(404, notFoundPage());
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(rec.data.full.home);
+      }
+      if (pathname === '/admin/ai/download') {
+        const token = String(ctx.query.token || '');
+        const onDisk = readAiBuild(token);
+        if (onDisk) {
+          res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="ai-build-' + token.slice(0, 8) + '.zip"' });
+          return res.end(onDisk);
+        }
+        const r = aiadmin.apiAiDownload(req, res, { query: ctx.query });
+        if (r && r.download) {
+          res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="' + r.download.name + '"' });
+          return res.end(r.download.buf);
+        }
+        return finish(404, 'پروژه پیدا نشد');
       }
       if (pathname === '/apps/wizard') {
         const r = apporder.renderAppWizard(req, res, ctx);
@@ -483,6 +573,12 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/account/messages') {
         if (!user) return redirect(res, '/login');
         return finish(200, account.messagesPage(req, res, ctx));
+      }
+
+      // ─── استودیوی هوش مصنوعی (صفحه) ───
+      if (pathname === '/admin/ai-studio') {
+        if (!user || user.role !== 'admin') return redirect(res, '/login');
+        return finish(200, aiadmin.aiStudioPage(req, res, { user }));
       }
 
       // ─── پنل ادمین ───

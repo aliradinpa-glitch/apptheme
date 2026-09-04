@@ -94,6 +94,7 @@ function navbar(user, active = '', csrf = '') {
       ${link('/', '🏠 خانه', 'home')}
       ${link('/templates', '🧩 قالب‌ها', 'templates')}
       ${link('/apps', '🤖 سفارش اپ اندروید', 'apps')}
+      ${link('/ai', '⚡ استودیو AI', 'ai')}
       ${link('/#why', '⚡ چرا اپ‌تم؟', 'why')}
       ${link('/#comments', '💬 نظرات', 'comments')}
       ${!user ? `
@@ -321,6 +322,7 @@ export function adminPage({ user, title, active = '', body, desc = '', csrf = ''
       ['/admin/coupons', 'کدهای تخفیف', 'coupons', 'M20 12l-8 8-4-4 8-8zM6 18l-2-2M9 21l2-2'],
     ]],
     ['سرویس‌ها', [
+      ['/admin/ai-studio', 'استودیوی هوش مصنوعی ⚡', 'ai-studio', 'M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7zm-3 19h6m-4-3v3'],
       ['/admin/generator', 'قالب‌ساز هوشمند', 'generator', 'M12 2l2.4 4.9L20 9.5l-4 3.9.9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-3.9 5.6-2.6z'],
       ['/admin/app-projects', 'سفارش‌های اپ', 'app-projects', 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 16h4M12 6v6m-3 0h6'],
     ]],

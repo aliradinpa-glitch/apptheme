@@ -14,7 +14,8 @@ export const CSRF_COOKIE = 'tl_csrf';
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 روز
 
 // Limits
-export const BODY_LIMIT = 1024 * 1024; // 1MB
+export const BODY_LIMIT = 10 * 1024 * 1024; // فرمهای معمولی
+export const UPLOAD_LIMIT = 64 * 1024 * 1024; // آپلود ZIP قالب (۶۴MB)
 export const DOWNLOAD_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 روز
 
 export const SITE_URL = process.env.SITE_URL || ''; // در پروداکشن: SITE_URL=https://apptheme.ir
