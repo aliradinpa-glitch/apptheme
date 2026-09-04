@@ -52,12 +52,12 @@ export function aiStudioPage(req, res, { user }) {
 <div class="studio-grid">
   <div class="card panel" id="studioForm">
     <div class="sf-head"><div class="flex" style="gap:8px">
-      <button type="button" class="sf-tab on" data-tab="link">🌐 سایت از لینک</button>
-      <button type="button" class="sf-tab" data-tab="template">🪄 قالبساز</button>
-      <button type="button" class="sf-tab" data-tab="plugin">🧩 افزونهساز</button>
-      <button type="button" class="sf-tab" data-tab="store">🏪 فروشگاهساز</button>
-      <button type="button" class="sf-tab" data-tab="convert">📦 تبدیل قالب</button>
-      <button type="button" class="sf-tab" data-tab="app">📱 اپ اندروید</button>
+      <button type="button" class="sf-tab on" data-tab="link">سایت از لینک</button>
+      <button type="button" class="sf-tab" data-tab="template">قالبساز</button>
+      <button type="button" class="sf-tab" data-tab="plugin">افزونهساز</button>
+      <button type="button" class="sf-tab" data-tab="store">فروشگاهساز</button>
+      <button type="button" class="sf-tab" data-tab="convert">تبدیل قالب</button>
+      <button type="button" class="sf-tab" data-tab="app">اپ اندروید</button>
     </div></div>
     <label class="sf-simple-line" title="پنهان کردن تنظیمات پیشرفته"><input type="checkbox" id="sfSimple"> 🧸 حالت ساده — فقط URL یا پرامپت را بنویس، بقیه خودکار میشود</label>
 
@@ -113,7 +113,14 @@ export function aiStudioPage(req, res, { user }) {
     </div>
 
     <div id="sfTierNote" class="tier-note"></div>
-    <button class="btn lg" id="sfRun" style="width:100%;margin-top:12px">🚀 ساخت با هوش مصنوعی</button>
+    <div class="bt-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;padding:8px 2px">
+      <span class="muted small">زمان ساخت:</span>
+      <button type="button" class="mode-chip" data-bt="fast">سریع</button>
+      <button type="button" class="mode-chip on" data-bt="standard">استاندارد</button>
+      <button type="button" class="mode-chip" data-bt="deep">دقیق و کامل</button>
+      <span class="muted small" style="font-size:.72rem">زمان بیشتر = جزئیات و بخشهای بیشتر</span>
+    </div>
+    <button class="btn lg" id="sfRun" style="width:100%;margin-top:12px">ساخت با هوش مصنوعی</button>
     <div id="sfResult" style="margin-top:14px"></div>
   </div>
 
@@ -167,7 +174,9 @@ export function apiAiBuild(req, res, { body, session }) {
   const kind = String(body.kind || 'template');
   const tierKey = TIERS.some(t => t.key === body.tier) ? body.tier : 'gold';
   const token = randomToken(20);
-  const depth = strengthFor('admin', tierKey); // ادمین: مافوق حرفهای (اپیک = ۱۰۰٪)
+  const BTMAP = { fast: { k: 'fast', d: -0.07 }, standard: { k: 'standard', d: 0 }, deep: { k: 'deep', d: 0.10 } };
+  const bt = BTMAP[String(body.buildTime || 'standard')] || BTMAP.standard;
+  const depth = Math.min(1, Math.max(0.08, strengthFor('admin', tierKey) + bt.d)); // ادمین: مافوق حرفهای
   const seed = Math.abs(parseInt(body.seed, 10) || 0);
   const eta = estimateBuild(kind, depth, seed);
   if (kind === 'link') {
@@ -503,4 +512,123 @@ export function aiPublish(req, res, { body }) {
   const product = insert('products', doc);
   updateOne('aiProducts', x => x.token === rec.token, { productId: product.id, price, salePrice, published: isPublished });
   return { json: { ok: true, id: product.id, slug: product.slug, published: isPublished, salePrice } };
+}
+
+// ═══════════ مدیریت انتشار اپ‌ها (ادمین) ═══════════
+export function adminAppsPage(req, res, { user, baseUrl }) {
+  const builds = findMany('aiProducts').sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const kindL = { template: 'قالب', plugin: 'افزونه', store: 'فروشگاه‌ساز', convert: 'تبدیل', link: 'از لینک', app: 'اپ اندروید' };
+  const tierL = { bronze: 'برنز', silver: 'نقره', gold: 'طلا', vip: 'VIP', legendary: 'لجندری', epic: 'اپیک' };
+  const dateF = t => { try { return new Date(t).toLocaleDateString('fa-IR'); } catch { return '-'; } };
+  const rows = builds.map(b => {
+    const owner = b.userId ? findOne('users', u => u.id === b.userId) : null;
+    const pub = !!b.published;
+    return `<tr data-ap="${esc(b.token)}" data-kind="${b.kind}" data-pub="${pub ? '1' : '0'}" data-date="${b.createdAt || ''}">
+      <td><b>${esc((b.title || 'خروجی AI').slice(0, 48))}</b>${b.productId ? '<div class="muted small">فروشگاه: ' + esc(b.productId) + '</div>' : ''}</td>
+      <td>${kindL[b.kind] || esc(b.kind)}</td>
+      <td><span class="badge ${tierL[b.tier] ? 'primary' : 'soft'}">${tierL[b.tier] || esc(b.tier || '-')}</span></td>
+      <td class="small">${owner ? esc(owner.name) : '<span class="muted">ادمین</span>'}</td>
+      <td class="small">${dateF(b.createdAt)}</td>
+      <td><span class="badge ${pub ? 'ok' : 'soft'}" data-pub-badge>${pub ? 'منتشرشده' : 'پیش‌نویس'}</span></td>
+      <td>
+        <div class="flex" style="gap:6px;flex-wrap:wrap">
+          <button class="btn sm ${pub ? 'ghost' : ''}" type="button" data-toggle-pub="${esc(b.token)}">${pub ? 'توقف' : 'انتشار'}</button>
+          <a class="btn sm ghost" href="/app/${esc(b.token)}" target="_blank" rel="noopener">صفحه عمومی</a>
+          <a class="btn sm soft" href="/preview/ai/${esc(b.token)}" target="_blank" rel="noopener">پیش‌نمایش</a>
+          <a class="btn sm ghost" href="/admin/ai/download?token=${esc(b.token)}">دانلود</a>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  const body = `
+<div class="admin-card" style="padding:22px">
+  <div class="between flex-wrap" style="gap:12px;margin-bottom:16px">
+    <div>
+      <h2 style="margin:0">انتشار اپ‌ها و خروجی‌های هوش مصنوعی</h2>
+      <p class="muted small" style="margin-top:6px">همهٔ خروجی‌های کاربران و ادمین؛ انتشار = فعال شدن صفحهٔ عمومی <code>/app/…</code> برای همه.</p>
+    </div>
+    <div class="flex" style="gap:8px">
+      <span class="badge soft" id="afCount">${fa(builds.length)}</span> کل
+      <span class="badge ok">${fa(builds.filter(b => b.published).length)} منتشرشده</span>
+    </div>
+  </div>
+  <div class="bt-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px">
+    <span class="muted small">نوع:</span>
+    <button type="button" class="mode-chip on" data-fk="all">همه</button>
+    <button type="button" class="mode-chip" data-fk="template">قالب</button>
+    <button type="button" class="mode-chip" data-fk="plugin">افزونه</button>
+    <button type="button" class="mode-chip" data-fk="store">فروشگاهساز</button>
+    <button type="button" class="mode-chip" data-fk="app">اپ</button>
+    <span class="muted small" style="margin-inline-start:8px">وضعیت:</span>
+    <button type="button" class="mode-chip on" data-fp="all">همه</button>
+    <button type="button" class="mode-chip" data-fp="1">منتشرشده</button>
+    <button type="button" class="mode-chip" data-fp="0">پیشنویس</button>
+    <span class="muted small" style="margin-inline-start:8px">زمان ساخت:</span>
+    <button type="button" class="mode-chip on" data-ft="all">همه</button>
+    <button type="button" class="mode-chip" data-ft="week">هفته اخیر</button>
+    <button type="button" class="mode-chip" data-ft="month">ماه اخیر</button>
+  </div>
+  ${builds.length ? `<div class="table-wrap"><table class="tbl">
+    <tr><th>عنوان</th><th>نوع</th><th>سطح</th><th>سازنده</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr>
+    ${rows}
+  </table></div>` : '<div class="empty-state"><p>هنوز خروجی‌ای ساخته نشده است.</p></div>'}
+</div>
+<script>
+(function () {
+  var csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
+  var fk = 'all', fp = 'all', ft = 'all';
+  function applyF() {
+    var rows = document.querySelectorAll('tr[data-kind]');
+    var vis = 0, now = Date.now();
+    rows.forEach(function (r) {
+      var okK = fk === 'all' || r.getAttribute('data-kind') === fk;
+      var okP = fp === 'all' || r.getAttribute('data-pub') === fp;
+      var d = new Date(r.getAttribute('data-date') || 0).getTime();
+      var okT = ft === 'all' || (ft === 'week' && now - d < 7 * 864e5) || (ft === 'month' && now - d < 30 * 864e5);
+      r.hidden = !(okK && okP && okT);
+      if (okK && okP && okT) vis++;
+    });
+    var c = document.getElementById('afCount');
+    if (c) c.textContent = vis;
+  }
+  [['data-fk', function (v) { fk = v; }], ['data-fp', function (v) { fp = v; }], ['data-ft', function (v) { ft = v; }]].forEach(function (pair) {
+    document.querySelectorAll('[' + pair[0] + ']').forEach(function (c) {
+      c.addEventListener('click', function () {
+        document.querySelectorAll('[' + pair[0] + ']').forEach(function (x) { x.classList.remove('on'); });
+        c.classList.add('on'); pair[1](c.getAttribute(pair[0])); applyF();
+      });
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-toggle-pub]');
+    if (!b) return;
+    if (b.dataset.busy) return;
+    b.dataset.busy = '1';
+    fetch('/admin/ai/toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf, 'Accept': 'application/json' },
+      body: JSON.stringify({ token: b.getAttribute('data-toggle-pub') })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      delete b.dataset.busy;
+      if (!d.ok) { window.tlToast && tlToast(d.error || 'خطا', 'err', { title: 'انتشار اپ' }); return; }
+      var row = b.closest('tr');
+      var badge = row.querySelector('[data-pub-badge]');
+      badge.textContent = d.published ? 'منتشرشده' : 'پیش‌نویس';
+      badge.className = 'badge ' + (d.published ? 'ok' : 'soft');
+      b.textContent = d.published ? 'توقف' : 'انتشار';
+      b.classList.toggle('ghost', d.published);
+      window.tlToast && tlToast(d.published ? 'اپ منتشر شد و صفحهٔ عمومی فعال است' : 'انتشار متوقف شد', d.published ? 'ok' : 'warn', { title: 'انتشار اپ' });
+    }).catch(function () { delete b.dataset.busy; });
+  });
+})();
+</script>`;
+  return adminPage({ user, title: 'انتشار اپ‌ها', active: 'apps-pub', body });
+}
+
+export function apiAppToggle(req, res, { body, user }) {
+  if (!user || user.role !== 'admin') return { json: { ok: false, error: 'دسترسی ندارید' } };
+  const rec = findOne('aiProducts', x => x.token === String(body.token || ''));
+  if (!rec) return { json: { ok: false, error: 'پروژه پیدا نشد' } };
+  const pub = !rec.published;
+  updateOne('aiProducts', x => x.token === rec.token, { published: pub, publishedAt: pub ? new Date().toISOString() : null });
+  return { json: { ok: true, published: pub } };
 }

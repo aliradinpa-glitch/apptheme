@@ -77,7 +77,7 @@
     navLinks.classList.toggle('open');
   });
 
-  // ═══ سبد خرید سروری (کوکی) ═══
+  // ═══ سبد خرید سروری (کوکی) — نسخه حرفه‌ای ═══
   function api(method, url, body) {
     var csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
     return fetch(url, {
@@ -87,77 +87,180 @@
     }).then(function (r) { return r.json(); });
   }
 
-  // ── استایل کشوی سبد (نئونی) ──
+  // ── استایل کشوی سبد ──
   var DRAWER_CSS = [
-    '.cart-drawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(390px,94vw);z-index:99980;display:flex;flex-direction:column;background:linear-gradient(170deg,color-mix(in srgb,var(--surface,#161b31) 90%,var(--primary,#7c5cff) 10%),var(--surface,#161b31));border-inline-end:1px solid var(--border,#283163);box-shadow:0 0 80px rgba(2,4,16,.7);transform:translateX(115%);transition:.3s cubic-bezier(.3,.9,.3,1)}',
+    '.cd-backdrop{position:fixed;inset:0;background:rgba(4,7,18,.62);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.25s;z-index:99970}',
+    '.cd-backdrop.on{opacity:1;pointer-events:auto}',
+    '.cart-drawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(420px,100vw);z-index:99980;display:flex;flex-direction:column;background:var(--surface,#161b31);border-inline-end:1px solid var(--border,#283163);box-shadow:0 0 90px rgba(2,4,16,.75);transform:translateX(115%);transition:transform .32s cubic-bezier(.32,.9,.28,1)}',
     '.cart-drawer.on{transform:none}',
-    '.cart-drawer::before{content:\'\';position:absolute;top:0;inset-inline:0;height:3px;background:linear-gradient(90deg,var(--primary,#7c5cff),#22d3ee,#f472b6);background-size:220% 100%;animation:cdFlow 6s linear infinite}',
-    '@keyframes cdFlow{to{background-position:220% 0}}',
-    '.cart-drawer header{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border,#283163)}',
-    '.cart-drawer header b{font-size:1.02rem}',
-    '.cart-drawer .cd-items{flex:1;overflow:auto;padding:14px 18px;display:grid;gap:10px;align-content:start}',
-    '.cart-drawer .cd-it{display:flex;gap:10px;justify-content:space-between;align-items:center;border:1px solid var(--border,#283163);border-radius:14px;padding:12px 14px;background:color-mix(in srgb,var(--surface-2,#1a2250) 70%,transparent);transition:.18s}',
-    '.cart-drawer .cd-it:hover{border-color:color-mix(in srgb,var(--primary,#7c5cff) 45%,var(--border,#283163))}',
-    '.cart-drawer .cd-it b{font-size:.86rem}',
-    '.cart-drawer .cd-it small{color:var(--muted,#96a1cd)}',
-    '.cart-drawer footer{padding:16px 20px;border-top:1px solid var(--border,#283163);display:grid;gap:10px;background:color-mix(in srgb,var(--surface-2,#1a2250) 55%,transparent)}',
-    '.cart-drawer .cd-total{display:flex;justify-content:space-between;font-weight:800;font-size:1rem}',
-    '.cd-x{border:0;background:none;font-size:1.4rem;cursor:pointer;color:inherit;opacity:.6;transition:.2s;line-height:1}',
-    '.cd-rm{flex-shrink:0;width:30px;height:30px;border-radius:9px;border:1px solid rgba(251,113,133,.3);background:rgba(251,113,133,.1);color:#fb7185;font-size:.85rem;cursor:pointer;transition:.18s;line-height:1}',
-    '.cd-rm:hover{background:#fb7185;color:#fff;box-shadow:0 6px 16px rgba(251,113,133,.35);transform:rotate(90deg)}',
-    '.cd-x:hover{opacity:1;color:#fb7185;transform:rotate(90deg)}',
     '[dir="rtl"] .cart-drawer{inset-inline-start:auto;inset-inline-end:0;transform:translateX(-115%)}',
-    '[dir="rtl"] .cart-drawer.on{transform:none}'
+    '[dir="rtl"] .cart-drawer.on{transform:none}',
+    '.cart-drawer header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border,#283163);gap:10px}',
+    '.cart-drawer header .cd-h{display:flex;align-items:center;gap:10px}',
+    '.cart-drawer header b{font-size:1.05rem}',
+    '.cd-count{background:var(--primary,#7c5cff);color:#fff;font-size:.72rem;font-weight:800;padding:3px 9px;border-radius:99px;min-width:22px;text-align:center}',
+    '.cd-x{border:0;background:none;font-size:1.35rem;cursor:pointer;color:inherit;opacity:.55;transition:.2s;line-height:1;width:34px;height:34px;border-radius:10px}',
+    '.cd-x:hover{opacity:1;background:color-mix(in srgb,var(--border,#283163) 60%,transparent);transform:rotate(90deg)}',
+    '.cd-ship{padding:12px 20px;border-bottom:1px solid var(--border,#283163);display:grid;gap:6px}',
+    '.cd-ship .cd-ship-t{font-size:.76rem;color:var(--muted,#96a1cd);display:flex;justify-content:space-between}',
+    '.cd-ship .cd-ship-t b{color:var(--ok,#34d399)}',
+    '.cd-ship .cd-ship-bar{height:6px;border-radius:99px;background:color-mix(in srgb,var(--border,#283163) 70%,transparent);overflow:hidden}',
+    '.cd-ship .cd-ship-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary,#7c5cff),#22d3ee);transition:width .4s}',
+    '.cd-items{flex:1;overflow:auto;padding:12px 16px;display:grid;gap:10px;align-content:start}',
+    '.cd-it{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#283163);border-radius:16px;padding:12px;background:color-mix(in srgb,var(--surface-2,#1a2250) 62%,transparent);position:relative;transition:.18s}',
+    '.cd-it:hover{border-color:color-mix(in srgb,var(--primary,#7c5cff) 42%,var(--border,#283163))}',
+    '.cd-thumb{width:52px;height:52px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}',
+    '.cd-main{flex:1;min-width:0;display:grid;gap:3px}',
+    '.cd-title{font-size:.9rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.cd-title a{color:inherit;text-decoration:none}',
+    '.cd-title a:hover{color:var(--primary,#7c5cff)}',
+    '.cd-price{font-size:.75rem;color:var(--muted,#96a1cd)}',
+    '.cd-old{text-decoration:line-through;opacity:.6;margin-inline-end:6px}',
+    '.cd-ctl{display:flex;justify-content:space-between;align-items:center;margin-top:6px}',
+    '.cd-qty{display:flex;align-items:center;gap:2px;border:1px solid var(--border,#283163);border-radius:10px;overflow:hidden}',
+    '.cd-qty button{width:26px;height:26px;border:0;background:color-mix(in srgb,var(--surface-2,#1a2250) 70%,transparent);color:inherit;cursor:pointer;font-size:.95rem;line-height:1;transition:.15s}',
+    '.cd-qty button:hover{background:var(--primary,#7c5cff);color:#fff}',
+    '.cd-qty span{min-width:26px;text-align:center;font-size:.85rem;font-weight:700}',
+    '.cd-line{font-size:.92rem}',
+    '.cd-rm{width:26px;height:26px;border-radius:8px;border:1px solid rgba(251,113,133,.3);background:rgba(251,113,133,.08);color:#fb7185;cursor:pointer;transition:.18s;font-size:.8rem;line-height:1;flex-shrink:0}',
+    '.cd-rm:hover{background:#fb7185;color:#fff;box-shadow:0 5px 14px rgba(251,113,133,.3)}',
+    '.cart-drawer footer{padding:14px 20px 18px;border-top:1px solid var(--border,#283163);display:grid;gap:8px;background:color-mix(in srgb,var(--surface-2,#1a2250) 55%,transparent)}',
+    '.cd-save{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted,#96a1cd)}',
+    '.cd-save b{color:var(--ok,#34d399)}',
+    '.cd-total{display:flex;justify-content:space-between;align-items:baseline}',
+    '.cd-total b{font-size:1.15rem}',
+    '.cd-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}',
+    '.cd-acts .btn{justify-content:center;text-align:center}',
+    '.cd-empty{text-align:center;padding:36px 16px;color:var(--muted,#96a1cd)}',
+    '.cd-empty b{display:block;font-size:1rem;color:var(--fg,#e9edff);margin-bottom:6px}',
+    '@media (max-width:640px){.cart-drawer{width:100vw;border-inline-end:0}.cd-acts{grid-template-columns:1fr}}'
   ].join('');
   var st = document.createElement('style'); st.textContent = DRAWER_CSS; document.head.appendChild(st);
 
-  var drawerEl = null;
+  var drawerEl = null, backdropEl = null;
   function ensureDrawer() {
     if (drawerEl) return drawerEl;
+    backdropEl = document.createElement('div'); backdropEl.className = 'cd-backdrop'; document.body.appendChild(backdropEl);
     drawerEl = document.createElement('div');
     drawerEl.className = 'cart-drawer';
     drawerEl.setAttribute('role', 'dialog');
+    drawerEl.setAttribute('aria-modal', 'true');
     drawerEl.setAttribute('aria-label', 'سبد خرید');
-    drawerEl.innerHTML = '<header><b>🛒 سبد خرید شما</b><button class="cd-x" type="button" aria-label="بستن">×</button></header><div class="cd-items"></div><footer><div class="cd-total"><span>جمع سبد:</span><b class="cd-sum">—</b></div><a class="btn lg" style="text-align:center;width:100%" href="/cart">مشاهده سبد و تسویه</a></footer>';
+    drawerEl.innerHTML =
+      '<header><div class="cd-h"><b>سبد خرید</b><span class="cd-count">۰</span></div>' +
+      '<button class="cd-x" type="button" aria-label="بستن">×</button></header>' +
+      '<div class="cd-ship"><div class="cd-ship-t"><span class="cd-ship-msg"></span><b class="cd-ship-ok" hidden>ارسال رایگان فعال شد</b></div>' +
+      '<div class="cd-ship-bar"><i style="width:0%"></i></div></div>' +
+      '<div class="cd-items"></div>' +
+      '<footer>' +
+      '<div class="cd-save"><span>سود شما از خرید</span><b class="cd-savings">—</b></div>' +
+      '<div class="cd-total"><span class="muted">جمع سبد</span><b class="cd-sum">—</b></div>' +
+      '<div class="cd-acts"><a class="btn lg" href="/cart">مشاهده سبد</a><a class="btn lg soft" href="/checkout">تسویه حساب</a></div>' +
+      '</footer>';
     document.body.appendChild(drawerEl);
-    drawerEl.querySelector('.cd-x').addEventListener('click', function () { drawerEl.classList.remove('on'); });
-    document.addEventListener('click', function (e) {
-      if (drawerEl.classList.contains('on') && !drawerEl.contains(e.target) && e.target.id !== 'cartBtn' && !e.target.closest('#cartBtn')) drawerEl.classList.remove('on');
+    drawerEl.querySelector('.cd-x').addEventListener('click', closeDrawer);
+    backdropEl.addEventListener('click', closeDrawer);
+    drawerEl.addEventListener('click', function (e) {
+      var q = e.target.closest('[data-dq]');
+      if (q) {
+        var row = q.closest('[data-cid]'); if (!row) return;
+        var id = row.getAttribute('data-cid');
+        var cur = Number(row.querySelector('.cd-qty span').textContent.replace(/[^\d]/g, '')) || 1;
+        var next = Math.max(1, Math.min(10, cur + (Number(q.getAttribute('data-dq')) || 0)));
+        if (next === cur) return;
+        window.tlCart.setQty(id, next).then(function (d) { if (window.tlCart.summary) renderDrawer(window.tlCart.summary); }).catch(function () {});
+        return;
+      }
+      var rm = e.target.closest('[data-drm]');
+      if (rm) {
+        var row2 = rm.closest('[data-cid]'); if (!row2) return;
+        var id2 = row2.getAttribute('data-cid');
+        window.tlCart.remove(id2).then(function (d) {
+          if (window.tlCart.summary) renderDrawer(window.tlCart.summary);
+          window.tlToast('از سبد حذف شد', 'warn', {
+            title: 'حذف شد', duration: 6000,
+            action: { label: 'بازگردانی', fn: function () { window.tlCart.add(id2, true).then(function (d2) { if (window.tlCart.summary) renderDrawer(window.tlCart.summary); }); } },
+          });
+        }).catch(function () {});
+        return;
+      }
+    });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && drawerEl.classList.contains('on')) closeDrawer();
     });
     return drawerEl;
   }
+  function closeDrawer() {
+    if (!drawerEl) return;
+    drawerEl.classList.remove('on');
+    if (backdropEl) backdropEl.classList.remove('on');
+  }
+  function openDrawer(d) {
+    ensureDrawer();
+    renderDrawer(d || window.tlCart.summary);
+    drawerEl.classList.add('on');
+    if (backdropEl) backdropEl.classList.add('on');
+  }
   function faN(n) { return Number(n || 0).toLocaleString('fa-IR'); }
+  function thumbHTML(it) {
+    var pal = (it.palette && it.palette[0] && it.palette[1]) ? it.palette : ['#7c5cff', '#22d3ee'];
+    var letter = (it.title || '؟').trim().charAt(0);
+    return '<div class="cd-thumb" style="background:linear-gradient(135deg,' + pal[0] + ',' + pal[1] + ')"><span>' + letter + '</span></div>';
+  }
+  function renderDrawer(d) {
+    if (!drawerEl) return;
+    var items = (d && d.items) || [];
+    drawerEl.querySelector('.cd-count').textContent = faN(d ? d.count : 0);
+    var box = drawerEl.querySelector('.cd-items');
+    box.innerHTML = items.length ? items.map(function (it) {
+      return '<div class="cd-it" data-cid="' + it.id + '">' +
+        thumbHTML(it) +
+        '<div class="cd-main">' +
+        '<div class="cd-title"><a href="/templates/' + it.slug + '">' + it.title + '</a></div>' +
+        '<div class="cd-price"><span class="cd-old">' + (it.oldPrice ? faN(it.oldPrice) : '') + '</span>' + faN(it.price) + ' تومان</div>' +
+        '<div class="cd-ctl"><div class="cd-qty"><button type="button" data-dq="-1" aria-label="کمتر">−</button><span>' + faN(it.qty) + '</span><button type="button" data-dq="1" aria-label="بیشتر">+</button></div>' +
+        '<b class="cd-line">' + faN(it.line) + ' تومان</b></div></div>' +
+        '<button class="cd-rm" type="button" data-drm aria-label="حذف ' + it.title + '" title="حذف از سبد">×</button></div>';
+    }).join('') : '<div class="cd-empty"><b>سبد خرید شما خالی است</b>قالب‌های حرفه‌ای اپ‌تم منتظر شما هستند.</div>';
+    var ship = drawerEl.querySelector('.cd-ship');
+    if (items.length) {
+      var left = Number(d.freeShipLeft || 0);
+      var has = Number(window.FREE_SHIP_THRESHOLD || 500000);
+      var pct = Math.min(100, Math.round((Number(d.subtotal || 0) / has) * 100));
+      ship.hidden = false;
+      drawerEl.querySelector('.cd-ship-msg').textContent = left > 0 ? 'تا ارسال رایگان ' + faN(left) + ' تومان مانده' : 'ارسال رایگان';
+      drawerEl.querySelector('.cd-ship-ok').hidden = left > 0;
+      drawerEl.querySelector('.cd-ship-bar i').style.width = pct + '%';
+    } else ship.hidden = true;
+    drawerEl.querySelector('.cd-savings').textContent = faN(d.savings) + (d.savings ? ' تومان' : '');
+    drawerEl.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
+    var acts = drawerEl.querySelectorAll('.cd-acts a');
+    if (acts[1]) acts[1].href = items.length ? '/checkout?items=' + items.map(function (x) { return x.id; }).join(',') : '/cart';
+  }
 
   window.tlCart = {
     summary: null,
-    refresh: function () { return api('GET', '/cart/summary').then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); },
+    refresh: function () {
+      return api('GET', '/cart/summary').then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; });
+    },
     add: function (id, silent) {
       return api('POST', '/cart/add', { productId: id }).then(function (d) {
         window.tlCart.summary = d; updateBadge(d.count);
-        if (!silent) { window.tlToast('به سبد خرید اضافه شد', 'ok', { title: 'سبد خرید' }); openDrawer(d); }
+        if (!silent) {
+          window.tlToast('به سبد خرید اضافه شد', 'ok', { title: 'سبد خرید' });
+          openDrawer(d);
+        }
         return d;
       }).catch(function () { location.href = '/cart'; });
     },
-    remove: function (id) { return api('POST', '/cart/remove', { productId: id }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); },
-    setQty: function (id, qty) { return api('POST', '/cart/qty', { productId: id, qty: qty }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; }); }
+    remove: function (id) {
+      return api('POST', '/cart/remove', { productId: id }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; });
+    },
+    setQty: function (id, qty) {
+      return api('POST', '/cart/qty', { productId: id, qty: qty }).then(function (d) { window.tlCart.summary = d; updateBadge(d.count); return d; });
+    },
+    open: openDrawer, close: closeDrawer
   };
-
-  function openDrawer(d) {
-    var dr = ensureDrawer();
-    var box = dr.querySelector('.cd-items');
-    box.innerHTML = (d.items || []).map(function (it) {
-      return '<div class="cd-it"><div class="grow"><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b><button class="cd-rm" type="button" data-drawer-remove="' + it.id + '" aria-label="حذف ' + it.title + '" title="حذف از سبد">✕</button></div>';
-    }).join('') || '<p class="muted" style="text-align:center;padding:24px">سبد خرید شما خالی است 🛒</p>';
-    dr.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
-    dr.querySelector('footer a.btn').href = d.items && d.items.length ? '/checkout?items=' + d.items.map(function (x) { return x.id; }).join(',') : '/cart';
-    dr.classList.add('on');
-  }
-  function updateBadge(n) {
-    var el = document.getElementById('cartCount');
-    if (!el) return;
-    el.hidden = !n;
-    el.textContent = faN(n);
-  }
 
   // بوت: خواندن سبد از سرور + مهاجرت یک‌باره از localStorage قدیمی
   (function () {
@@ -168,135 +271,6 @@
       : window.tlCart.refresh();
     boot.then(function (d) { window.tlCart.summary = d; updateBadge(d.count); }).catch(function () {});
   })();
-
-  // ═══ مودال ورود/ثبت‌نام/بازیابی رمز (سه وضعیت در یک مودال) ═══
-  var authModal = document.getElementById('authModal');
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && authModal && !authModal.hidden) closeAuth(); });
-  function openAuth(view) {
-    if (!authModal) { location.href = '/' + (view || 'login'); return; }
-    var forgotBox = document.getElementById('forgotDone');
-    if (forgotBox) forgotBox.classList.add('hide');
-    authModal.hidden = false;
-    requestAnimationFrame(function () { authModal.classList.add('on'); });
-    switchView(view || 'login');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeAuth() {
-    authModal.classList.remove('on');
-    setTimeout(function () { authModal.hidden = true; document.body.style.overflow = ''; }, 220);
-  }
-  function switchView(view) {
-    if (!authModal) return;
-    authModal.querySelectorAll('.auth-view').forEach(function (v) { v.classList.toggle('on', v.getAttribute('data-view') === view); });
-    var sw = document.getElementById('authSwitchTxt'), swr = document.getElementById('authSwitchTxtR');
-    if (sw) sw.classList.toggle('hide', view === 'login');
-    if (swr) swr.classList.toggle('hide', view !== 'login');
-  }
-  document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-auth]');
-    if (t) { e.preventDefault(); openAuth(t.getAttribute('data-auth')); return; }
-    if (e.target.closest('[data-close-auth]')) { if (authModal) closeAuth(); return; }
-    var ov = e.target.closest('[data-open-view]');
-    if (ov && authModal) { e.preventDefault(); switchView(ov.getAttribute('data-open-view')); return; }
-    // نمایش/مخفی رمز عبور
-    var eye = e.target.closest('[data-eye]');
-    if (eye) {
-      var inp = document.getElementById(eye.getAttribute('data-eye'));
-      if (inp) {
-        var isPass = inp.type === 'password';
-        inp.type = isPass ? 'text' : 'password';
-        eye.textContent = isPass ? '🙈' : '👁';
-      }
-    }
-
-    // ── قدرت رمز عبور (نوار ۴ قسمتی) ──
-    var regPass = document.getElementById('regPass');
-    if (regPass && !regPass.dataset.bound) {
-      regPass.dataset.bound = '1';
-      regPass.addEventListener('input', function () {
-        var box = document.getElementById('passStrength');
-        if (!box) return;
-        var v = regPass.value || '';
-        var score = 0;
-        if (v.length >= 8) score++;
-        if (v.length >= 12) score++;
-        if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
-        if (/[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
-        box.className = 'af-strength' + (v ? ' s' + score : '');
-      });
-    }
-
-    // ── بازیابی رمز بدون رفرش (در مودال) ──
-    var forgotForm = document.getElementById('authFormForgot');
-    if (forgotForm && !forgotForm.dataset.bound) {
-      forgotForm.dataset.bound = '1';
-      forgotForm.addEventListener('submit', function (ev) {
-        ev.preventDefault();
-        var btn = forgotForm.querySelector('button[type=submit]');
-        var idf = forgotForm.querySelector('[name=identifier]');
-        if (!idf || !idf.value.trim()) { window.tlToast('ایمیل را وارد کن', 'err', { title: 'بازیابی رمز' }); return; }
-        btn.disabled = true; btn.textContent = '… در حال ارسال';
-        var fd = new FormData(forgotForm);
-        fetch('/forgot', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'fetch' } })
-          .then(function () {
-            forgotForm.classList.add('hide');
-            document.getElementById('forgotDone').classList.remove('hide');
-          })
-          .catch(function () { window.tlToast('خطای شبکه؛ دوباره تلاش کن', 'err', { title: 'بازیابی رمز' }); })
-          .finally(function () { btn.disabled = false; btn.textContent = 'ارسال لینک بازنشانی ✉️'; });
-      });
-    }
-    // راهنمای فعال‌سازی ورود اجتماعی
-    var need = e.target.closest('[data-needs-setup]');
-    if (need) {
-      e.preventDefault();
-      var guides = {
-        github: 'برای فعال‌سازی ورود با گیت‌هاب:<br>۱) در github.com/settings/developers یک OAuth App بسازید<br>۲) آدرس کال‌بک: <b>آدرس‌سایت/auth/github/callback</b><br>۳) Client ID و Secret را در «ادمین ← تنظیمات ← ورود اجتماعی» وارد کنید<br>فعلاً با ایمیل/موبایل وارد شوید 💡',
-        google: 'برای فعال‌سازی ورود با گوگل (جیمیل):<br>۱) در Google Cloud Console ← Credentials یک OAuth Client (Web) بسازید<br>۲) آدرس کال‌بک: <b>آدرس‌سایت/auth/google/callback</b><br>۳) Client ID و Secret را در «ادمین ← تنظیمات ← ورود اجتماعی» وارد کنید<br>فعلاً با ایمیل/موبایل وارد شوید 💡',
-        telegram: 'برای فعال‌سازی ورود با تلگرام:<br>۱) از <b>@BotFather</b> ربات جدید بسازید (/newbot)<br>۲) نام‌کاربری و توکن ربات را در «ادمین ← تنظیمات ← ورود اجتماعی» وارد کنید<br>فعلاً با ایمیل/موبایل وارد شوید 💡',
-        bale: 'بله هنوز OAuth استاندارد عمومی ندارد؛ راه جایگزین: ثبت‌نام با ایمیل/موبایل و پیام از داخل حساب به پشتیبانی 💡',
-        rubika: 'روبیکا هنوز OAuth استاندارد عمومی دارد اما نیازمند ثبت‌نام توسعه‌دهنده در پنل روبیکاست؛ فعلاً با ایمیل/موبایل وارد شوید 💡'
-      };
-      window.tlAlert((guides[need.getAttribute('data-needs-setup')] || 'این روش هنوز فعال نشده؛ فعلاً با ایمیل/موبایل وارد شوید.'), 'info', 'راهنمای فعال‌سازی');
-    }
-  });
-
-  // دکمه سبد در هدر → کشو
-  document.addEventListener('click', function (e) {
-    var cb = e.target.closest('#cartBtn');
-    if (cb) {
-      e.preventDefault();
-      window.tlCart.refresh().then(openDrawer).catch(function () { location.href = '/cart'; });
-    }
-  });
-
-  // ── حذف آیتم از کشوی سبد (با تأیید + بازگردانی) ──
-  document.addEventListener('click', function (e) {
-    var rm = e.target.closest('[data-drawer-remove]');
-    if (!rm) return;
-    e.preventDefault();
-    var id = rm.getAttribute('data-drawer-remove');
-    window.tlConfirm('این قالب از سبد حذف شود؟', { okText: 'بله، حذف کن', danger: true, icon: '🗑', title: 'حذف از سبد' })
-      .then(function (ok) {
-        if (!ok) return;
-        return window.tlCart.remove(id).then(function () {
-          if (window.tlCart.summary) openDrawerSilent(window.tlCart.summary);
-          window.tlToast('قالب از سبد حذف شد', 'warn', {
-            title: 'حذف شد',
-            duration: 6000,
-            action: { label: '↩ بازگردانی', fn: function () { window.tlCart.add(id, true).then(function (d) { openDrawerSilent(d); }); } },
-          });
-        });
-      });
-  });
-  function openDrawerSilent(d) {
-    if (!drawerEl || !drawerEl.classList.contains('on')) return; // فقط اگر کشو باز است رفرش کن
-    var box = drawerEl.querySelector('.cd-items');
-    box.innerHTML = (d.items || []).map(function (it) {
-      return '<div class="cd-it"><div class="grow"><b>' + it.title + '</b><br><small>' + faN(it.qty) + ' × ' + faN(it.price) + ' تومان</small></div><b>' + faN(it.line) + '</b><button class="cd-rm" type="button" data-drawer-remove="' + it.id + '" title="حذف از سبد">✕</button></div>';
-    }).join('') || '<p class="muted" style="text-align:center;padding:24px">سبد خرید شما خالی است 🛒</p>';
-    drawerEl.querySelector('.cd-sum').textContent = faN(d.subtotal) + ' تومان';
-  }
 
   document.addEventListener('click', function (e) {
     var add = e.target.closest('[data-add-to-cart]');

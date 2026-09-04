@@ -16,6 +16,7 @@ import * as api from './src/routes/api.js';
 import * as admin from './src/routes/admin.js';
 import * as aiadmin from './src/aiadmin.js';
 import { userStudioPage, apiUserBuild, apiUserRework, apiUserSubscribe, proState } from './src/proai.js';
+import * as apppub from './src/routes/apppublish.js';
 import { makeZip } from './src/zip.js';
 import { buildFromUrl } from './src/sitegen.js';
 import { convertTemplate } from './src/converter.js';
@@ -182,7 +183,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/sitemap.xml') {
       const products = getDb().products.filter(p => p.published);
-      const urls = ['', '/templates', '/apps', '/ai', '/terms', ...products.map(p => `/templates/${encodeURIComponent(p.slug)}`)];
+      const urls = ['', '/templates', '/apps', '/ai', '/pro', '/terms', ...products.map(p => `/templates/${encodeURIComponent(p.slug)}`)];
       res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
       return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(x => `<url><loc>${baseUrl}${x}</loc><changefreq>weekly</changefreq></url>`).join('\n')}\n</urlset>`);
     }
@@ -326,6 +327,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/admin/ai/publish') return handle(aiadmin.aiPublish(req, res, ctx));
       if (pathname === '/admin/ai/proplans') return handle(aiadmin.apiProPlansSave(req, res, ctx));
       if (pathname === '/admin/ai/rework') return handle(aiadmin.apiAiRework(req, res, ctx));
+      if (pathname === '/admin/ai/toggle') return handle(aiadmin.apiAppToggle(req, res, ctx));
       if (pathname === '/admin/ai/linkbuild') {
         const url = String(ctx.body.url || '');
         if (!/^https?:\/\//i.test(url)) { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); return res.end(JSON.stringify({ ok: false, error: 'لینک معتبر بده' })); }
@@ -420,6 +422,15 @@ const server = http.createServer(async (req, res) => {
         writeCart(res, []);
         if ((req.headers.accept || '').includes('application/json') || body.json) return cartJsonRes([]);
         return redirect(res, '/cart');
+      }
+
+      // ═══ انتشار اپ (کاربر) ═══
+      if ((m = pathname.match(/^\/apps\/publish\/([A-Za-z0-9]+)$/))) {
+        if (!user) return redirect(res, '/login');
+        if (!csrfOk(req, csrf, body)) return finish(403, 'درخواست نامعتبر (CSRF)');
+        const r = apppub.togglePublish(req, res, { ...ctx, token: m[1] });
+        if ((req.headers.accept || '').includes('application/json') || body.json) return finish(200, JSON.stringify({ ok: true }));
+        return redirect(res, '/apps/publish');
       }
 
       return finish(404, notFoundPage());
@@ -536,6 +547,7 @@ const server = http.createServer(async (req, res) => {
 
       // سفارش اپ
       if (pathname === '/apps') return finish(200, apporder.renderAppsHome(req, res, ctx));
+      if (pathname === '/pro') return finish(200, pub.proPage(req, res, ctx));
       if (pathname === '/ai') return finish(200, user ? userStudioPage(req, res, ctx) : pub.aiHub(req, res, ctx));
       if (pathname === '/ai/download') {
         if (!user) return redirect(res, '/login');
@@ -563,7 +575,7 @@ const server = http.createServer(async (req, res) => {
         const rec = findOne('aiProducts', x => x.token === m[1]);
         if (!rec) return finish(404, notFoundPage());
         const pubProduct = rec.productId && findOne('products', p => p.id === rec.productId && p.published);
-        const allowed = !!(user && (user.role === 'admin' || rec.userId === user.id)) || !!pubProduct;
+        const allowed = !!(user && (user.role === 'admin' || rec.userId === user.id)) || !!pubProduct || !!rec.published;
         if (!allowed) return finish(403, 'دسترسی ندارید — این خروجی خصوصی شماست؛ وارد حساب خودت شو');
         // ۱) فایل preview.html از ZIP روی دیسک
         if (rec.kind !== 'template') {
@@ -596,6 +608,14 @@ const server = http.createServer(async (req, res) => {
           return res.end(r.download.buf);
         }
         return finish(404, 'پروژه پیدا نشد');
+      }
+      if (pathname === '/apps/publish') {
+        if (!user) return redirect(res, '/login');
+        return finish(200, apppub.appsPublishPage(req, res, ctx));
+      }
+      if ((m = pathname.match(/^\/app\/([A-Za-z0-9]{8,64})$/))) {
+        const r = apppub.appPage(req, res, { ...ctx, token: m[1] });
+        return r ? finish(200, r) : finish(404, notFoundPage());
       }
       if (pathname === '/apps/wizard') {
         const r = apporder.renderAppWizard(req, res, ctx);
@@ -630,6 +650,10 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/admin/ai-studio') {
         if (!user || user.role !== 'admin') return redirect(res, '/login');
         return finish(200, aiadmin.aiStudioPage(req, res, { user }));
+      }
+      if (pathname === '/admin/apps') {
+        if (!user || user.role !== 'admin') return redirect(res, '/login');
+        return finish(200, aiadmin.adminAppsPage(req, res, ctx));
       }
 
       // ─── پنل ادمین ───

@@ -138,6 +138,15 @@
   // ── نسخهها و ویرایش ──
   var seedNow = 0, lastBody = null;
 
+  // ── زمان ساخت ──
+  var btSel = 'standard';
+  document.querySelectorAll('[data-bt]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('[data-bt]').forEach(function (x) { x.classList.remove('on'); });
+      c.classList.add('on'); btSel = c.getAttribute('data-bt');
+    });
+  });
+
   // ── ساخت ──
   $('sfRun').addEventListener('click', function () {
     var kind = kindNow();
@@ -185,7 +194,7 @@
     var promptEl = kind === 'plugin' ? $('pfPrompt') : kind === 'store' ? $('stPrompt') : kind === 'app' ? $('apPrompt') : $('sfPrompt');
     var prompt = (promptEl && promptEl.value || '').trim();
     if (prompt.length < 6) { window.tlToast('پرامپت را بنویس (حداقل ۶ حرف)', 'err'); return; }
-    var body = { kind: kind, prompt: prompt, tier: tierKey };
+    var body = { kind: kind, prompt: prompt, tier: tierKey, buildTime: btSel };
     if (kind === 'store') body.fw = fw;
     doBuild(body, 0);
   });

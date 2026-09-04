@@ -4,6 +4,7 @@ import { esc, money, faNum, faDate, timeAgo, starsSvg, svgThumb, isEmail } from 
 import { page } from '../render.js';
 import { findMany, findOne, productRating, productLikes, getDb } from '../db.js';
 import { FRAMEWORKS, APP_NAME } from '../config.js';
+import { proPlansOf } from '../gencore.js';
 import { anonCsrf } from '../auth.js';
 
 const fa = n => Number(n).toLocaleString('fa-IR');
@@ -26,7 +27,7 @@ export function home(req, res, { user, baseUrl, csrf }) {
 <section class="hero">
   <div class="container inner">
     <div>
-      <span class="badge primary" style="margin-bottom:18px; display:inline-flex;">🚀 بیش از ${fa(totalDownloads)} دانلود قالب</span>
+      <span class="badge primary" style="margin-bottom:18px; display:inline-flex;">بیش از ${fa(totalDownloads)} دانلود موفق قالب</span>
       <h1>قالب وب سایت حرفه‌ای بساز، <span class="grad-text">فارغ از کدنویسی</span></h1>
       <p class="lead">مجموعه‌ای از بهترین قالب‌های راست‌چین و بهینه برای سئو — فروشگاهی، شرکتی، شخصی و استارتاپی. خرید امن، دانلود آنی و آپدیت رایگان.</p>
       <div class="hero-cta">
@@ -71,24 +72,24 @@ export function home(req, res, { user, baseUrl, csrf }) {
       <div class="ai-sell-glow"></div>
       <div class="ai-sell-in">
         <div class="ai-sell-txt">
-          <span class="badge primary" style="display:inline-flex;margin-bottom:10px">🤖 فروشگاه‌ساز هوشمند — ۶ سطح از برنز تا اپیک</span>
+          <span class="badge primary" style="display:inline-flex;margin-bottom:10px">استودیو هوش مصنوعی — ۶ سطح از برنز تا اپیک</span>
           <h2>فروشگاه اینترنتی خودت را با هوش مصنوعی بساز</h2>
           <p>لینک سایت موردعلاقه‌ات را بده (حتی دیجی‌کالا!) — هوش مصنوعی آن را تحلیل می‌کند و قالب، افزونه وردپرس/ووکامرس، فروشگاه‌ساز جنگو/نود/HTML و حتی اپ اندروید برایت می‌سازد؛ همراه <b>فایل راهنمای Word با تصاویر مراحل نصب</b>.</p>
           <div class="ai-sell-feats">
-            <span>🌐 کپی سبک از لینک</span><span>🧩 افزونه‌ساز وردپرس</span><span>🏪 فروشگاه‌ساز ۵ پلتفرم</span><span>📱 اپ اندروید PWA</span><span>📄 راهنمای ورد با عکس</span>
+            <span>کپی سبک از لینک</span><span>افزونه‌ساز وردپرس</span><span>فروشگاه‌ساز ۵ پلتفرم</span><span>اپ اندروید PWA</span><span>راهنمای ورد با عکس</span>
           </div>
           <div class="hero-cta" style="margin-top:22px">
-            <a class="btn lg" href="/ai">🚀 شروع با هوش مصنوعی</a>
+            <a class="btn lg" href="/ai">شروع با هوش مصنوعی</a>
             <a class="btn lg ghost" href="/apps">سفارش اپ اندروید</a>
           </div>
         </div>
         <div class="ai-sell-art" aria-hidden="true">
-          <div class="ai-tile t1"><span>🥉</span><b>برنزی</b></div>
-          <div class="ai-tile t2"><span>🥈</span><b>نقره‌ای</b></div>
-          <div class="ai-tile t3"><span>🥇</span><b>طلایی</b></div>
-          <div class="ai-tile t4"><span>💎</span><b>VIP</b></div>
-          <div class="ai-tile t5"><span>👑</span><b>لجندری</b></div>
-          <div class="ai-tile t6"><span>🔥</span><b>اپیک</b></div>
+          <div class="ai-tile t1"><b>برنز</b></div>
+          <div class="ai-tile t2"><b>نقره</b></div>
+          <div class="ai-tile t3"><b>طلا</b></div>
+          <div class="ai-tile t4"><b>VIP</b></div>
+          <div class="ai-tile t5"><b>لجندری</b></div>
+          <div class="ai-tile t6"><b>اپیک</b></div>
         </div>
       </div>
     </div>
@@ -99,10 +100,10 @@ export function home(req, res, { user, baseUrl, csrf }) {
   <div class="container">
     <div class="section-head"><h2>چرا اپ‌تم؟</h2></div>
     <div class="why-grid">
-      <div class="card why-card"><div class="ic">⚡</div><h3>سرعت و سئو</h3><p>ساختار سبک، HTML معنایی، داده‌های ساختاریافته و خروجی SSR برای شروع سریع‌تر و سئوی بهتر.</p></div>
-      <div class="card why-card"><div class="ic">⬇️</div><h3>دانلود آنی</h3><p>بلافاصله پس از پرداخت، لینک دانلود اختصاصی در پنل کاربری فعال می‌شود.</p></div>
-      <div class="card why-card"><div class="ic">🔄</div><h3>آپدیت رایگان</h3><p>خرید یک‌بارمِمیز؛ همه به‌روزرسانی‌های بعدی قالب برای شما رایگان است.</p></div>
-      <div class="card why-card"><div class="ic">💬</div><h3>پشتیبانی واقعی</h3><p>تیم پشتیبانی ما تا راه‌اندازی کامل قالب همراه شماست.</p></div>
+      <div class="card why-card"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><h3>سرعت و سئو</h3><p>ساختار سبک، HTML معنایی، داده‌های ساختاریافته و خروجی SSR برای سئوی بهتر.</p></div>
+      <div class="card why-card"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div><h3>دانلود آنی</h3><p>بلافاصله پس از پرداخت، لینک دانلود اختصاصی در پنل کاربری فعال می‌شود.</p></div>
+      <div class="card why-card"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div><h3>آپدیت رایگان</h3><p>خرید یک‌بارمِمیز؛ همه به‌روزرسانی‌های بعدی قالب برای شما رایگان است.</p></div>
+      <div class="card why-card"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>پشتیبانی واقعی</h3><p>تیم پشتیبانی ما تا راه‌اندازی کامل قالب همراه شماست.</p></div>
     </div>
   </div>
 </section>
@@ -146,7 +147,7 @@ export function productCard(p, user = null, cartIds = []) {
   const cat = findOne('categories', c => c.id === (p.categoryIds || [])[0]);
   const inCart = cartIds.includes(p.id);
   const effP = p.salePrice || p.price;
-  const tier = effP < 500000 ? '<span class="badge ok">اقتصادی</span>' : effP < 1200000 ? '<span class="badge primary">استاندارد</span>' : '<span class="badge warn">حرفه‌ای 👑</span>';
+  const tier = effP < 500000 ? '<span class="badge ok">اقتصادی</span>' : effP < 1200000 ? '<span class="badge primary">استاندارد</span>' : '<span class="badge warn">حرفه‌ای</span>';
   return `
 <article class="card product-card">
   <div class="thumb">
@@ -157,9 +158,9 @@ export function productCard(p, user = null, cartIds = []) {
   <div class="body">
     <h3><a href="/templates/${esc(p.slug)}">${esc(p.title)}</a></h3>
     <div class="meta">
-      ${cat ? `<span>${cat.icon} ${esc(cat.name)}</span>` : ''}
-      <span>📄 ${fa(p.pages)} صفحه</span>
-      <span>⬇️ ${fa(p.downloads)}</span>
+      ${cat ? `<span>${esc(cat.name)}</span>` : ''}
+      <span>${fa(p.pages)} صفحه</span>
+      <span>${fa(p.downloads)} دانلود</span>
     </div>
     <div class="meta">${starsSvg(rating)} ${count ? `<span>(${fa(count)} نظر)</span>` : '<span class="muted">بدون نظر</span>'}</div>
     <div class="price-row">
@@ -175,9 +176,9 @@ export function productCard(p, user = null, cartIds = []) {
     </div>
     <div class="card-buy-row">
       <button class="btn sm ${inCart ? 'ghost cart-in' : ''}" data-cart-toggle="${p.id}" data-title="${esc(p.title)}">
-        ${inCart ? '✓ در سبد — حذف' : '🛒 افزودن به سبد'}
+        ${inCart ? 'در سبد — حذف' : 'افزودن به سبد'}
       </button>
-      <a class="btn sm soft" href="/checkout?items=${p.id}">خرید سریع ⚡</a>
+      <a class="btn sm soft" href="/checkout?items=${p.id}">خرید سریع</a>
     </div>
   </div>
 </article>`;
@@ -192,6 +193,7 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
   const sort = query.sort || 'new';
   const tier = query.tier || '';
   const sale = query.sale === '1';
+  const time = query.time || '';
 
   if (q) products = products.filter(p => (p.title + ' ' + (p.tags || []).join(' ') + ' ' + p.description).includes(q));
   if (tier) products = products.filter(p => {
@@ -199,6 +201,11 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
     return tier === 'eco' ? eff < 500000 : tier === 'std' ? (eff >= 500000 && eff < 1200000) : eff >= 1200000;
   });
   if (sale) products = products.filter(p => !!p.salePrice);
+  if (time) {
+    const days = { day: 1, week: 7, month: 30 }[time] || 0;
+    const cutoff = Date.now() - (time === 'old' ? 32 * 864e5 : days * 864e5);
+    products = products.filter(p => time === 'old' ? new Date(p.createdAt).getTime() < cutoff : new Date(p.createdAt).getTime() >= cutoff);
+  }
   if (cat) {
     const c = findOne('categories', x => x.slug === cat);
     if (c) products = products.filter(p => p.categoryIds.includes(c.id));
@@ -216,7 +223,7 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
     return '/templates' + (p.toString() ? '?' + p.toString() : '');
   };
 
-  const chip = (active_, href_, label_) => `<a class="chip ${active_ ? 'chip-on' : ''}" href="${href_}">${label_}</a>`;
+  const chip = (active_, href_, label_) => `<a class="chip ${active_ ? 'chip-on' : ''}" href="${href_}" data-finst>${label_}</a>`;
   const body = `
 <div class="container section">
   <nav class="breadcrumb"><a href="/">خانه</a> <span>/</span> <span>قالب‌ها</span></nav>
@@ -245,14 +252,21 @@ export function catalogPage(req, res, { user, baseUrl, query, csrf, cart = [] })
       <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:center">
         <b class="small muted">سطح:</b>
         ${chip(!tier, qs({ tier: null, page: null }), 'همه')}
-        ${chip(tier === 'eco', qs({ tier: 'eco', page: null }), '🌱 اقتصادی')}
-        ${chip(tier === 'std', qs({ tier: 'std', page: null }), '⚖️ استاندارد')}
-        ${chip(tier === 'pro', qs({ tier: 'pro', page: null }), '👑 حرفه‌ای')}
-        ${chip(sale, qs(Object.assign({ sale: sale ? null : '1' }, { page: null })), '🔥 فقط تخفیف‌دار')}
+        ${chip(tier === 'eco', qs({ tier: 'eco', page: null }), 'اقتصادی')}
+        ${chip(tier === 'std', qs({ tier: 'std', page: null }), 'استاندارد')}
+        ${chip(tier === 'pro', qs({ tier: 'pro', page: null }), 'حرفه‌ای')}
+        ${chip(sale, qs(Object.assign({ sale: sale ? null : '1' }, { page: null })), 'فقط تخفیف‌دار')}
       </div>
-      ${(q || cat || fw || tier || sale || sort !== 'new') ? `<a class="btn sm ghost" href="/templates">✕ حذف فیلترها</a>` : ''}
+      ${(q || cat || fw || tier || sale || time || sort !== 'new') ? `<a class="btn sm ghost" href="/templates">حذف فیلترها</a>` : ''}
     </div>
-    <div class="filter-row muted small">🎯 ${fa(products.length)} قالب مطابق فیلترها ${cart.length ? `· 🛒 ${fa(cart.length)} قالب در سبد شما` : ''}</div>
+    <div class="filter-row"><b class="small muted">زمان ساخت:</b>
+      ${chip(!time, qs({ time: null, page: null }), 'همه')}
+      ${chip(time === 'day', qs({ time: 'day', page: null }), '۲۴ ساعت اخیر')}
+      ${chip(time === 'week', qs({ time: 'week', page: null }), 'هفته اخیر')}
+      ${chip(time === 'month', qs({ time: 'month', page: null }), 'ماه اخیر')}
+      ${chip(time === 'old', qs({ time: 'old', page: null }), 'بیش از یک ماه')}
+    </div>
+    <div class="filter-row muted small" data-rescount>${fa(products.length)} قالب مطابق فیلترها ${cart.length ? `· ${fa(cart.length)} قالب در سبد شما` : ''}</div>
   </div>
   <div id="catalogGrid">
   ${products.length
@@ -426,29 +440,36 @@ export function productPage(req, res, ctx) {
 
 // ─── سبد خرید (رندر سمت کلاینت داخل پوسته SSR) ───
 export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
-  const { rows, subtotal, count } = cartSummary(cart);
+  const { rows, subtotal } = cartSummary(cart);
+  const saved = rows.reduce((s, r) => s + Math.max(0, ((findOne('products', x => x.id === r.id && x.published) || {}).price || 0) - r.price) * r.qty, 0);
+  const count = rows.reduce((s, r) => s + r.qty, 0);
   const itemsStr = cart.map(x => x.id).join(',') || '';
+  const FREE = 500000, shipLeft = Math.max(0, FREE - subtotal), shipPct = Math.min(100, Math.round((subtotal / FREE) * 100));
   const body = `
 <div class="container section">
   <nav class="breadcrumb"><a href="/">خانه</a> <span>/</span> <span>سبد خرید</span></nav>
   <div class="cart-page-head">
-    <div class="section-head" style="margin-bottom:0"><h2>سبد خرید شما ${count ? `<span class="badge primary">${fa(count)} قالب</span>` : ''}</h2></div>
-    ${rows.length ? `<button class="btn sm ghost" id="cartClearAll"><span>🧹</span> خالی کردن سبد</button>` : ''}
+    <div class="section-head" style="margin-bottom:0"><h2>سبد خرید شما ${count ? `<span class="badge primary">${fa(count)} کالا</span>` : ''}</h2></div>
+    ${rows.length ? `<button class="btn sm ghost" id="cartClearAll" type="button">خالی کردن سبد</button>` : ''}
   </div>
   ${rows.length ? `
-  <div class="admin-2col" style="grid-template-columns:1.6fr 1fr">
-    <div class="card card-pad" id="cartBox" style="display:grid;gap:4px">
-      ${rows.map(r => `
-      <div class="cart-item" data-cart-row="${r.id}">
+  <div class="admin-2col" style="grid-template-columns:1.65fr 1fr;align-items:start">
+    <div class="card card-pad" id="cartBox" style="display:grid;gap:0;padding:6px 20px">
+      ${rows.map((r, i) => { const p = findOne('products', x => x.id === r.id && x.published) || {}; const off = p.price && p.salePrice ? p.price - p.salePrice : 0; return `
+      <div class="cart-item" data-cart-row="${r.id}" style="${i ? 'border-top:1px dashed var(--border)' : ''}">
         <div class="ct-thumb">${svgThumb({ id: r.id, title: r.title, palette: r.palette, accent: r.accent })}</div>
         <div class="grow">
           <b><a href="/templates/${esc(r.slug)}" class="ct-title">${esc(r.title)}</a></b>
-          <div class="muted small">${fa(r.qty)} × ${money(r.price)}</div>
+          <div class="muted small" style="margin-top:3px">
+            ${off ? `<del class="muted">${money(r.price + off)}</del> <b class="ct-off">${money(r.price)}</b>` : `<b class="ct-off">${money(r.price)}</b>`} <span>تومان / هر عدد</span>
+            ${off ? `<span class="badge ok" style="margin-inline-start:6px">${fa(Math.round((off / (r.price + off)) * 100))}٪ تخفیف</span>` : ''}
+          </div>
         </div>
-        <form method="post" action="/cart/qty" class="flex" style="gap:6px">
+        <form method="post" action="/cart/qty" class="flex" style="gap:6px;align-items:center">
           <input type="hidden" name="_csrf" value="${esc(csrf)}">
           <input type="hidden" name="productId" value="${r.id}">
-          <select class="select ct-qty-select" name="qty" onchange="this.form.submit()" aria-label="تعداد">
+          <label class="muted small" for="qty-${r.id}" style="margin:0">تعداد:</label>
+          <select class="select ct-qty-select" name="qty" id="qty-${r.id}" onchange="this.form.submit()" aria-label="تعداد ${esc(r.title)}">
             ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === r.qty ? 'selected' : ''}>${fa(n)}</option>`).join('')}
           </select>
           <noscript><button class="btn sm soft" type="submit">ثبت</button></noscript>
@@ -457,25 +478,37 @@ export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
         <form method="post" action="/cart/remove" data-cart-remove-form="${r.id}">
           <input type="hidden" name="_csrf" value="${esc(csrf)}">
           <input type="hidden" name="productId" value="${r.id}">
-          <button class="ct-remove" type="submit" title="حذف از سبد" aria-label="حذف ${esc(r.title)}">✕</button>
+          <button class="ct-remove" type="submit" title="حذف از سبد" aria-label="حذف ${esc(r.title)}">×</button>
         </form>
-      </div>`).join('')}
+      </div>`; }).join('')}
+      <div style="padding:14px 8px;border-top:1px dashed var(--border)">
+        <a class="btn sm soft" href="/templates">افزودن کالای بیشتر</a>
+      </div>
     </div>
     <div class="card card-pad cart-total-panel">
-      <h3 style="margin-bottom:12px">🧾 خلاصه سفارش</h3>
-      <div class="ct-row"><span class="muted">قالب‌ها</span><span>${fa(count)} عدد</span></div>
-      <div class="ct-row"><span class="muted">جمع کل</span><b>${money(subtotal)}</b></div>
-      <div class="ct-row"><span class="muted">تخفیف مناسبت</span><span class="badge warn">در تسویه</span></div>
+      <h3 style="margin-bottom:4px">خلاصه سفارش</h3>
+      <p class="muted small" style="margin-bottom:10px">${fa(count)} کالا در سبد شما</p>
+      <div class="ct-row"><span class="muted">جمع کالاها</span><span>${money(subtotal + saved)}</span></div>
+      ${saved ? `<div class="ct-row" style="color:var(--ok)"><span class="muted">سود شما</span><span>${money(saved)}−</span></div>` : ''}
+      <div class="ct-row"><span class="muted">هزینه ارسال</span>${shipLeft ? `<span>${money(FREE)} − تا رایگان</span>` : `<span class="badge ok">رایگان</span>`}</div>
+      <div style="display:grid;gap:5px;padding:4px 0">
+        <div class="muted small" style="display:flex;justify-content:space-between"><span>${shipLeft ? `تا ارسال رایگان ${money(shipLeft)} تومان` : 'ارسال این سفارش رایگان است'}</span><b style="color:var(--ok)">${fa(shipPct)}٪</b></div>
+        <div class="cd-ship" style="padding:0"><div class="cd-ship-bar" style="height:7px;border-radius:99px;background:color-mix(in srgb,var(--border) 70%,transparent);overflow:hidden"><i style="display:block;height:100%;width:${shipPct}%;background:linear-gradient(90deg,var(--primary),var(--accent,#22d3ee));border-radius:99px;transition:.4s"></i></div></div>
+      </div>
       <div class="ct-row total"><span>مبلغ قابل پرداخت</span><b class="price" style="font-size:1.35rem">${money(subtotal)}</b></div>
-      <a class="btn lg" style="width:100%;margin-top:10px" href="/checkout?items=${esc(itemsStr)}">ادامه تسویه و پرداخت ⚡</a>
-      <a class="btn lg ghost" style="width:100%" href="/templates">+ افزودن قالب بیشتر</a>
-      <p class="hint center" style="margin-top:10px">🔒 پرداخت امن از طریق درگاه رسمی</p>
+      <a class="btn lg" style="width:100%;margin-top:8px" href="/checkout?items=${esc(itemsStr)}">ادامه و تسویه حساب</a>
+      <div style="display:grid;gap:8px;margin-top:14px" class="muted small">
+        <span style="display:flex;align-items:center;gap:8px"><i style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></i> پرداخت امن از طریق درگاه رسمی</span>
+        <span style="display:flex;align-items:center;gap:8px"><i style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></i> دانلود آنی پس از پرداخت</span>
+        <span style="display:flex;align-items:center;gap:8px"><i style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></i> پشتیبانی ۷ روز هفته</span>
+      </div>
     </div>
   </div>` : `
-  <div class="card cart-empty"><div class="ce-ic">🛒</div>
-    <h3>سبد خرید شما خالی است!</h3>
-    <p class="muted small">قالب‌های حرفه‌ای ما منتظر شما هستند، از همین‌جا شروع کنید.</p>
-    <a class="btn lg" style="margin-top:8px" href="/templates">مشاهده قالب‌ها ✨</a>
+  <div class="card cart-empty">
+    <div class="ce-ic" style="font-size:2.6rem;color:var(--primary)"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.6"/><circle cx="19" cy="21" r="1.6"/><path d="M2.5 3h2l2.6 12.6a2 2 0 0 0 2 1.6h9.2a2 2 0 0 0 2-1.6L22 7H6"/></svg></div>
+    <h3>سبد خرید شما خالی است</h3>
+    <p class="muted small">قالب‌های حرفه‌ای اپ‌تم منتظر شما هستند؛ از همین‌جا شروع کنید.</p>
+    <a class="btn lg" style="margin-top:8px" href="/templates">مشاهده کالاها</a>
   </div>`}
 </div>
 <script>
@@ -483,7 +516,7 @@ export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
   var csrf = (document.querySelector('meta[name="csrf"]')||{}).content||'';
   var clearBtn = document.getElementById('cartClearAll');
   if (clearBtn) clearBtn.addEventListener('click', function(){
-    tlConfirm('همه <b>'+document.querySelectorAll('[data-cart-row]').length+'</b> قالب از سبد حذف شوند؟', { okText:'بله، خالی کن', danger:true, icon:'🧹', title:'خالی کردن سبد' })
+    tlConfirm('همه <b>'+document.querySelectorAll('[data-cart-row]').length+'</b> کالا از سبد حذف شوند؟', { okText:'بله، خالی کن', danger:true, title:'خالی کردن سبد' })
     .then(function(ok){
       if(!ok) return;
       fetch('/cart/clear', { method:'POST', headers:{'X-CSRF':csrf, 'Accept':'application/json'} }).then(function(){ location.reload(); });
@@ -494,8 +527,8 @@ export function cartPage(req, res, { user, baseUrl, csrf, cart }) {
     if(!f || f.dataset.confirmed==='1') return;
     e.preventDefault();
     var row = f.closest('[data-cart-row]');
-    var name = row ? row.querySelector('.ct-title').textContent : 'این قالب';
-    tlConfirm('<b>'+name+'</b> از سبد حذف شود؟', { okText:'بله، حذف کن', danger:true, icon:'🗑' })
+    var name = row ? row.querySelector('.ct-title').textContent : 'این کالا';
+    tlConfirm('<b>'+name+'</b> از سبد حذف شود؟', { okText:'بله، حذف کن', danger:true })
     .then(function(ok){
       if(!ok) return;
       f.dataset.confirmed='1';
@@ -547,7 +580,7 @@ export function accountPage(req, res, ctx) {
     </div>
     <div>
       ${projects.length ? `
-      <div class="section-head" style="margin-top:0"><h2>پروژه‌های اپلیکیشن</h2></div>
+      <div class="section-head" style="margin-top:0" id="apps"><h2>پروژه‌های اپلیکیشن</h2><a class="muted small" href="/apps/publish">انتشار اپ‌های ساخته‌شده ←</a></div>
       <div style="display:grid;gap:12px;margin-bottom:26px">
         ${projects.map(pr => {
           const st = { pending: 'در انتظار', started: 'در حال طراحی', preview1: 'پیش‌نمایش ۱', preview2: 'پیش‌نمایش ۲', preview3: 'پیش‌نمایش ۳', awaiting_second: 'نقطه تصمیم ۷۰٪ ⚖️', final_dev: 'توسعه نهایی', delivered_pending_final: 'تحویل اولیه', completed: 'تکمیل شده ✅', cancelled: 'لغو شده' }[pr.status] || pr.status;
@@ -558,7 +591,7 @@ export function accountPage(req, res, ctx) {
           </a>`;
         }).join('')}
       </div>` : ''}
-      <div class="section-head"><h2>سفارش‌ها و دانلودها</h2></div>
+      <div class="section-head" id="orders"><h2>سفارش‌ها و دانلودها</h2></div>
       ${orders.length ? `
       <div class="table-wrap"><table class="tbl">
         <tr><th>کد سفارش</th><th>قالب‌ها</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th><th>دانلود</th></tr>
@@ -812,4 +845,44 @@ ${aiProducts.length ? `<section class="section" style="padding-top:0">
   </div>
 </section>`;
   return page({ user, title: `استودیوی هوش مصنوعی | ${APP_NAME}`, desc: 'ساخت قالب، افزونه، فروشگاه‌ساز و اپ اندروید با هوش مصنوعی — ۶ سطح از برنزی تا اپیک', url: baseUrl + '/ai', body, csrf });
+}
+
+
+// ─── صفحهٔ عمومی اشتراک پرو ───
+export function proPage(req, res, { user, baseUrl, csrf }) {
+  const db = getDb();
+  const plans = proPlansOf(db).filter(p => p.active);
+  const cards = plans.map(p => `
+    <div class="tier-public pro-plan-card">
+      <div class="tp-ic">${p.icon}</div>
+      <b class="tp-name">${esc(p.label)}</b>
+      <div class="tp-price">${money(p.price)} <small>تومان</small></div>
+      <p class="muted small">${esc(p.desc || '')}</p>
+      <div class="pro-power"><span>قدرت هوش مصنوعی</span><b>${fa(p.ai)}٪ از قدرت ادمین</b></div>
+      <span class="badge soft" style="margin-top:6px">${fa(p.days)} روز دسترسی کامل</span>
+      <a class="btn" style="margin-top:12px;width:100%" href="${user ? '/ai' : '/login?next=/ai'}">${user ? 'فعال‌سازی از استودیو' : 'ورود و فعال‌سازی'}</a>
+    </div>`).join('');
+  const body = `
+<section class="section" style="padding-top:26px">
+  <div class="container">
+    <div class="section-head" style="flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:22px">
+      <h1 style="font-size:1.7rem">اشتراک پرو — استودیوی هوش مصنوعی</h1>
+      <p class="muted" style="max-width:42rem">قالب‌ساز، افزونه‌ساز، فروشگاه‌ساز و اپ اندروید با هوش مصنوعی؛ هر پلن سطح قدرت مخصوص خودش را دارد و <b>بهترین پلن دقیقاً ۵۰٪ قدرت هوش مصنوعی ادمین</b> است.</p>
+    </div>
+    <div class="tier-grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${cards}</div>
+    <div class="card card-pad" style="margin-top:26px;max-width:50rem;margin-inline:auto">
+      <h3 style="margin-bottom:10px">چه چیزهایی در اشتراک پرو می‌گیرید؟</h3>
+      <ul class="feature-list">
+        <li>قالب سایت حرفه‌ای با ۸ سبک طراحی و خروجی ریسپانسیو</li>
+        <li>افزونهٔ وردپرس / ووکامرس + فایل راهنمای Word با تصاویر نصب</li>
+        <li>فروشگاه‌ساز کامل (HTML، Tailwind، Bootstrap، React، Vue)</li>
+        <li>تبدیل قالب خام به نسخهٔ حرفه‌ای یا کپی سبک از هر سایت دلخواه</li>
+        <li>اپ اندروید PWA نصب‌شدنی + امکان انتشار با لینک عمومی</li>
+        <li>پیش‌نمایش زنده، ویرایش فارسی و دانلود فایل کامل ZIP</li>
+      </ul>
+      <p class="hint center" style="margin-top:12px">پرداخت مستقیم از کیف پول (شارژ از صفحهٔ کیف پول) — بلافاصله فعال می‌شود.</p>
+    </div>
+  </div>
+</section>`;
+  return page({ user, title: 'اشتراک پرو | اپ‌تم', desc: 'اشتراک پرو استودیوی هوش مصنوعی اپ‌تم — ساخت قالب، افزونه، فروشگاه و اپ اندروید', url: baseUrl + '/pro', body, csrf });
 }

@@ -63,12 +63,29 @@ const I = {
   store: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l1.5-5h15L21 9M3 9h18M4 9v11h16V9M9 20v-6h6v6"/></svg>',
   exit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
   user: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>',
+  key: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M15 7l3 3"/></svg>',
+  box: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8zM3.3 8.3l8.7 4.7 8.7-4.7M12 21V13"/></svg>',
+  wallet: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 1 0-4h14v4M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5"/><path d="M16 13h4"/><circle cx="16" cy="13" r="0"/><path d="M16.5 13h.01"/></svg>',
+  chat: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  docs: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>',
+  spark: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8zM19 15l.9 2.4L22 18l-2.1.6L19 21l-.9-2.4L16 18l2.1-.6z"/></svg>',
+  caretdown: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
+  phone: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.72A2 2 0 0 1 22 16.92z"/></svg>',
   menu: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
 };
 
 // ─── ناوبار فروشگاه ───
+function navSub(title, href, items, activeKey) {
+  const lis = items.map(it => `<a href="${it.href}" class="${activeKey === it.key ? 'active' : ''}">${esc(it.label)}${it.desc ? `<small>${esc(it.desc)}</small>` : ''}</a>`).join('');
+  return `<div class="nav-item has-sub">
+    <a class="nav-link" href="${href}">${esc(title)} ${I.caretdown}</a>
+    <div class="nav-sub"><div class="nav-sub-head">${esc(title)}</div>${lis}</div>
+  </div>`;
+}
 function navbar(user, active = '', csrf = '') {
   const link = (href, label, key, cls = '') => `<a href="${href}" class="${cls}${active === key ? ' active' : ''}">${label}</a>`;
+  const cats = findMany('categories').slice(0, 4);
   const authArea = user
     ? `<div class="user-chip" id="userChip" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
         <span class="avatar">${esc((user.name || 'ا').trim().charAt(0))}</span>
@@ -76,36 +93,51 @@ function navbar(user, active = '', csrf = '') {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         <div class="user-menu" id="userMenu" role="menu">
           <a href="/account" role="menuitem">${I.user} حساب من</a>
-          <a href="/account" role="menuitem">📦 سفارش‌ها و دانلودها</a>
-          <a href="/account/wallet" role="menuitem">💳 کیف پول</a>
-          <a href="/account/messages" role="menuitem">💬 پیام با پشتیبانی</a>
-          ${user.role === 'admin' ? `<a href="/admin" role="menuitem">🛡️ پنل مدیریت</a>` : ''}
+          <a href="/account#orders" role="menuitem">${I.box} سفارش‌ها و دانلودها</a>
+          <a href="/account/wallet" role="menuitem">${I.wallet} کیف پول</a>
+          <a href="/account/messages" role="menuitem">${I.chat} پیام با پشتیبانی</a>
+          ${user.role === 'admin' ? `<a href="/admin" role="menuitem">${I.shield} پنل مدیریت</a>` : ''}
           <form method="post" action="/logout"><input type="hidden" name="_csrf" value="${esc(csrf || '')}"><button type="submit" role="menuitem" style="color:var(--err)">${I.exit} خروج از حساب</button></form>
         </div>
       </div>`
-    : `<a class="btn sm soft" href="/forgot" data-auth="forgot" title="بازیابی رمز عبور">🔑</a>
+    : `<a class="icon-btn" href="/forgot" data-auth="forgot" aria-label="بازیابی رمز عبور" title="بازیابی رمز عبور">${I.key}</a>
        <a class="btn sm ghost" href="/login" data-auth="login">ورود</a>
-       <a class="btn sm" href="/register" data-auth="register">ثبت‌نام ✨</a>`;
+       <a class="btn sm" href="/register" data-auth="register">ثبت‌نام</a>`;
   return `
 <header class="navbar">
   <div class="container inner">
     <a class="logo" href="/"><span class="mark">پ</span><span>اپ‌تم<span class="tag">بازار قالب‌های حرفه‌ای</span></span></a>
     <nav class="nav-links" id="navLinks">
-      ${link('/', '🏠 خانه', 'home')}
-      ${link('/templates', '🧩 قالب‌ها', 'templates')}
-      ${link('/apps', '🤖 سفارش اپ اندروید', 'apps')}
-      ${link('/ai', '⚡ استودیو AI', 'ai')}
-      ${link('/#why', '⚡ چرا اپ‌تم؟', 'why')}
-      ${link('/#comments', '💬 نظرات', 'comments')}
+      ${link('/', 'خانه', 'home')}
+      ${navSub('قالب‌ها', '/templates', [
+        { href: '/templates', key: 'templates', label: 'همه قالب‌ها', desc: 'فروشگاه کامل' },
+        ...cats.map(c => ({ href: `/templates?cat=${esc(c.slug)}`, key: `cat-${c.slug}`, label: c.name, desc: '' })),
+        { href: '/templates?sort=popular', key: 'popular', label: 'پرفروش‌ترین‌ها', desc: 'محبوب نزد مشتریان' },
+        { href: '/templates?sale=1', key: 'sale', label: 'تخفیف‌دار', desc: 'پیشنهادهای ویژه' },
+      ], active)}
+      ${navSub('هوش مصنوعی', '/ai', [
+        { href: '/ai', key: 'ai', label: 'استودیو هوش مصنوعی', desc: 'شروع ساخت' },
+        { href: '/ai#tab-plugin', key: '', label: 'افزونه‌ساز', desc: 'وردپرس و ووکامرس' },
+        { href: '/ai#tab-store', key: '', label: 'فروشگاه‌ساز', desc: 'فروشگاه آنلاین کامل' },
+        { href: '/ai#tab-convert', key: '', label: 'تبدیل قالب', desc: 'از هر فایل موجود' },
+        { href: '/ai#tab-link', key: '', label: 'ساخت از لینک', desc: 'از روی یک سایت' },
+        { href: '/ai#tab-app', key: '', label: 'اپ اندروید', desc: 'اپلیکیشن از قالب' },
+        { href: '/pro', key: 'pro', label: 'اشتراک پرو', desc: 'قدرت و امکانات بیشتر' },
+      ], active)}
+      ${navSub('سفارش اپ', '/apps', [
+        { href: '/apps', key: 'apps', label: 'سفارش اپ اندروید', desc: 'تحویل حرفه‌ای' },
+        { href: '/apps#publish', key: '', label: 'انتشار اپ', desc: 'دریافت لینک و لایسنس' },
+        user ? { href: '/account#apps', key: '', label: 'پروژه‌های من', desc: 'وضعیت ساخت‌ها' } : null,
+      ].filter(Boolean), active)}
       ${!user ? `
-      <a class="m-auth" href="/login" data-auth="login">🔑 ورود</a>
-      <a class="m-auth" href="/register" data-auth="register">✨ ثبت‌نام</a>
+      <a class="m-auth" href="/login" data-auth="login">ورود</a>
+      <a class="m-auth" href="/register" data-auth="register">ثبت‌نام</a>
       <a class="m-auth" href="/forgot" data-auth="forgot">فراموشی رمز</a>` : `
-      <a class="m-auth" href="/account">👤 حساب کاربری</a>`}
+      <a class="m-auth" href="/account">حساب کاربری</a>`}
     </nav>
     <div class="nav-actions">
       <button class="icon-btn" id="themeToggle" aria-label="تغییر تم" title="روشن/تاریک">${I.sun}</button>
-      <button class="icon-btn" id="installBtn" hidden aria-label="نصب اپ موبایل" title="نصب اپ موبایل 📱">${I.install}</button>
+      <button class="icon-btn" id="installBtn" hidden aria-label="نصب اپ موبایل" title="نصب اپ موبایل">${I.install}</button>
       <a class="icon-btn" id="cartBtn" href="/cart" aria-label="سبد خرید" role="button">${I.cart}<span class="cart-count" id="cartCount" hidden>۰</span></a>
       ${authArea}
       <button class="icon-btn hamburger" id="hamburger" aria-label="منو">${I.burger}</button>
@@ -138,7 +170,7 @@ function footer() {
       <h4>دسترسی سریع</h4>
       <ul>
         <li><a href="/templates">همه قالب‌ها</a></li>
-        <li><a href="/apps">سفارش اپ اندروید 🤖</a></li>
+        <li><a href="/apps">سفارش اپ اندروید</a></li>
         <li><a href="/register">ثبت‌نام</a></li>
         <li><a href="/login">ورود</a></li>
         <li><a href="/account">پیگیری سفارش</a></li>
@@ -322,8 +354,9 @@ export function adminPage({ user, title, active = '', body, desc = '', csrf = ''
       ['/admin/coupons', 'کدهای تخفیف', 'coupons', 'M20 12l-8 8-4-4 8-8zM6 18l-2-2M9 21l2-2'],
     ]],
     ['سرویس‌ها', [
-      ['/admin/ai-studio', 'استودیوی هوش مصنوعی ⚡', 'ai-studio', 'M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7zm-3 19h6m-4-3v3'],
-    ['/admin/ai-pro', 'پلن‌های پرو 👥', 'ai-pro', 'M17 20h5v-2a4 4 0 0 0-3-3.87V9.1a5 5 0 1 0-2 0v5.03A4 4 0 0 0 14 18v2h3zm-8-9a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 4.5c-2.2 0-4.5 1.1-4.5 2.5V20h9v-2c0-1.4-2.3-2.5-4.5-2.5z'],
+      ['/admin/ai-studio', 'استودیوی هوش مصنوعی', 'ai-studio', 'M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7zm-3 19h6m-4-3v3'],
+    ['/admin/ai-pro', 'پلن‌های پرو', 'ai-pro', 'M17 20h5v-2a4 4 0 0 0-3-3.87V9.1a5 5 0 1 0-2 0v5.03A4 4 0 0 0 14 18v2h3zm-8-9a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 4.5c-2.2 0-4.5 1.1-4.5 2.5V20h9v-2c0-1.4-2.3-2.5-4.5-2.5z'],
+    ['/admin/apps', 'انتشار اپ‌ها', 'apps-pub', 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 0a15 15 0 0 1 0 20m0-20a15 15 0 0 0 0 20M2 12h20'],
       ['/admin/generator', 'قالب‌ساز هوشمند', 'generator', 'M12 2l2.4 4.9L20 9.5l-4 3.9.9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-3.9 5.6-2.6z'],
       ['/admin/app-projects', 'سفارش‌های اپ', 'app-projects', 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 16h4M12 6v6m-3 0h6'],
     ]],

@@ -269,10 +269,30 @@ ck "admin-proplans-ai50" '"ai":50' "$R"
 ck "admin-ai-pro-page" "پلن‌های پرو" "$(curl -s -b $JAR $B/admin/ai-pro)"
 
 
+# ─── ۱۳.۷. انتشار اپ (کاربر/ادمین) + صفحه عمومی + فیلتر زمان ساخت ───
+ck "pub-studio-buildtime" "زمان ساخت" "$(curl -s -b $PJ $B/ai)"
+B3=$(curl -s -b $PJ -X POST $B/ai/build -H "Content-Type: application/json" -H "X-CSRF: $PCS" -d '{"kind":"store","prompt":"فروشگاه لوازم دیجیتال تک‌شاپ با پرداخت آنلاین","buildTime":"deep"}')
+ck "pub-build-deep" '"ok":true' "$B3"
+T3=$(echo "$B3" | grep -o '"token":"[a-f0-9]*"' | cut -d'"' -f4)
+ck "pub-user-page" "انتشار اپ" "$(curl -s -b $PJ $B/apps/publish)"
+UP=$(curl -s -b $PJ -o /dev/null -w "%{http_code}" -X POST $B/apps/publish/$T3 --data-urlencode "_csrf=$PCS" --data-urlencode "action=publish")
+ck "pub-toggle-owner" "302" "$UP"
+ck "pub-public-page" "باز کردن در تب جدید" "$(curl -s $B/app/$T3)"
+ck "pub-public-preview" "شاپینو" "$(curl -s $B/preview/ai/$T3)"
+ck "pub-admin-apps" "انتشار اپ‌ها" "$(curl -s -b $JAR $B/admin/apps)"
+AT=$(curl -s -b $JAR -X POST $B/admin/ai/toggle -H "Content-Type: application/json" -H "X-CSRF: $MA" -d "{\"token\":\"$T3\"}")
+ck "pub-admin-toggle" '"published":false' "$AT"
+AP=$(curl -s -o /dev/null -w "%{http_code}" $B/app/$T3)
+ck "pub-unpub-404" "404" "$AP"
+curl -s -b $PJ -o /dev/null -X POST $B/apps/publish/$T3 --data-urlencode "_csrf=$PCS" --data-urlencode "action=publish"
+ck "pub-republish" "منتشرشده" "$(curl -s $B/app/$T3)"
+ck "pro-public-page" "اشتراک پرو" "$(curl -s $B/pro)"
+ck "catalog-instant-chips" "data-finst" "$(curl -s $B/templates)"
+ck "catalog-time-filter" "مطابق فیلترها" "$(curl -s "$B/templates?time=week")"
 R=$(curl -s -b $JAR -X POST $B/admin/purge-demo -H "X-CSRF: $MA")
 ck "purge-ok" '"ok":true' "$R"
 C=$(curl -s -c /tmp/pp.txt $B/login | grep -o 'name="_csrf" value="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
-ck "purge-sara-gone" "اشتباه است" "$(curl -s -b /tmp/pp.txt -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=sara@demo.ir" --data-urlencode "password=demo12345")"
+ck "purge-sara-gone" "200" "$(curl -s -b /tmp/pp.txt -o /dev/null -w "%{http_code}" -X POST $B/login --data-urlencode "_csrf=$C" --data-urlencode "identifier=sara@demo.ir" --data-urlencode "password=demo12345")"
 ck "purge-products-kept" "قالب جدید" "$(curl -s -b $JAR $B/admin/products)"
 ck "purge-admin-kept" "داشبورد" "$(curl -s -b $JAR $B/admin)"
 
@@ -308,7 +328,7 @@ GJ=/tmp/tl-guest-cart.txt; rm -f $GJ
 GC=$(curl -s -b $GJ -c $GJ $B/ | grep -o 'name="csrf" content="[a-f0-9]*"' | grep -o '[a-f0-9]\{32\}' | head -1)
 ck "cart-add-nojs" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/add --data-urlencode "_csrf=$GC" -d "productId=1")"
 curl -s -b $GJ -c $GJ -o /dev/null -X POST $B/cart/add --data-urlencode "_csrf=$GC" -d "productId=4&qty=2"
-ck "cart-page-ssr" "ادامه تسویه و پرداخت" "$(curl -s -b $GJ $B/cart)"
+ck "cart-page-ssr" "ادامه و تسویه حساب" "$(curl -s -b $GJ $B/cart)"
 ck "cart-page-item" "نوین‌شاپ" "$(curl -s -b $GJ $B/cart)"
 ck "cart-summary-json" "\"ok\":true" "$(curl -s -b $GJ $B/cart/summary)"
 ck "cart-remove" "302" "$(curl -s -b $GJ -c $GJ -o /dev/null -w "%{http_code}" -X POST $B/cart/remove --data-urlencode "_csrf=$GC" -d "productId=4")"

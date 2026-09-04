@@ -16,10 +16,24 @@
         var doc = new DOMParser().parseFromString(html, 'text/html');
         var fresh = doc.getElementById('catalogGrid');
         if (fresh) { grid.innerHTML = fresh.innerHTML; bindToggles(); }
+        var rc = doc.querySelector('[data-rescount]');
+        if (rc && window.__resCountEl) window.__resCountEl.textContent = rc.textContent;
         if (hint) hint.hidden = true;
       })
       .catch(function () { if (hint) hint.hidden = true; });
   }
+  // ── کلیک روی هر فیلتر (دسته/سطح/زمان/مرتب‌سازی) → اعمال درجا بدون رفرش کامل ──
+  var rcEl = document.querySelector('[data-rescount]');
+  if (rcEl) window.__resCountEl = rcEl;
+  document.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-finst]');
+    if (!c) return;
+    e.preventDefault();
+    history.pushState(null, '', c.getAttribute('href'));
+    fetchGrid(c.getAttribute('href'));
+  });
+  window.addEventListener('popstate', function () { fetchGrid(location.href); });
+
   if (input) input.addEventListener('input', function () {
     clearTimeout(timer);
     timer = setTimeout(function () {
@@ -42,7 +56,7 @@
   function paintBtn(btn, inCart) {
     btn.classList.toggle('ghost', inCart);
     btn.classList.toggle('cart-in', inCart);
-    btn.textContent = inCart ? '✓ در سبد — حذف' : '🛒 افزودن به سبد';
+    btn.textContent = inCart ? 'در سبد — حذف' : 'افزودن به سبد';
   }
   function bindToggles() {
     grid.querySelectorAll('[data-cart-toggle]').forEach(function (btn) {

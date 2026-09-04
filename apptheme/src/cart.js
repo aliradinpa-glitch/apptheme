@@ -47,8 +47,20 @@ export function cartSummary(items) {
   return { rows, count: rows.reduce((s, r) => s + r.qty, 0), subtotal: rows.reduce((s, r) => s + r.line, 0) };
 }
 
-// کوچک‌سازی برای پاسخ‌های JSON (badge/drawer)
+// کوچک‌سازی برای پاسخ‌های JSON (badge/drawer) — مافوق‌حرفه‌ای: پس‌انداز + ارسال رایگان + پیش‌نمایش رنگ
+export const FREE_SHIP_THRESHOLD = 500000;
 export function cartJson(items) {
   const s = cartSummary(items);
-  return { ok: true, count: s.count, subtotal: s.subtotal, items: s.rows.map(r => ({ id: r.id, title: r.title, slug: r.slug, price: r.price, qty: r.qty, line: r.line })) };
+  const rows = s.rows.map(r => {
+    const p = findOne('products', x => x.id === r.id && x.published);
+    return {
+      id: r.id, title: r.title, slug: r.slug, price: r.price, qty: r.qty, line: r.line,
+      oldPrice: p && p.price && p.salePrice ? p.price : null,
+      savings: p && p.price && p.salePrice ? (p.price - p.salePrice) * r.qty : 0,
+      palette: p?.palette || ['#7c5cff', '#22d3ee'], accent: p?.accent || '#f59e0b',
+    };
+  });
+  const savings = rows.reduce((x, r) => x + (r.savings || 0), 0);
+  const freeShipLeft = Math.max(0, FREE_SHIP_THRESHOLD - s.subtotal);
+  return { ok: true, count: s.count, subtotal: s.subtotal, savings, freeShipLeft, freeShip: freeShipLeft === 0, items: rows };
 }

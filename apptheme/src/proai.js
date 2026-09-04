@@ -84,10 +84,10 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
   const power = Math.max(4, Math.min(50, plan.ai || 0));
   const builds = findMany('aiProducts', x => x.userId === user.id && x.role === 'pro').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 12);
   const kinds = [
-    ['template', '🪄 قالبساز', 'مثلاً: سایت رستوران لوکس برند «شب طلایی» با منو و گالری', true],
-    ['plugin', '🧩 افزونهساز', 'مثلاً: افزونه «فرم تماس پرو» با اعلان سفارش ووکامرس', false],
-    ['store', '🏪 فروشگاهساز', 'مثلاً: فروشگاه دیجیتال برند «تکشاپ» با پرداخت آنلاین', false],
-    ['app', '📱 اپ اندروید', 'مثلاً: اپ فروشگاهی «شاپینو» با اعلان تخفیف و جستجو', false],
+    ['template', 'قالبساز', 'مثلاً: سایت رستوران لوکس برند «شب طلایی» با منو و گالری', true],
+    ['plugin', 'افزونهساز', 'مثلاً: افزونه «فرم تماس پرو» با اعلان سفارش ووکامرس', false],
+    ['store', 'فروشگاهساز', 'مثلاً: فروشگاه دیجیتال برند «تکشاپ» با پرداخت آنلاین', false],
+    ['app', 'اپ اندروید', 'مثلاً: اپ فروشگاهی «شاپینو» با اعلان تخفیف و جستجو', false],
   ];
   const tabs = kinds.map(([k, t], i) => `<button type="button" class="sf-tab${i === 0 ? ' on' : ''}" data-tab="${k}">${t}</button>`).join('');
   const panels = kinds.map(([k, t, ph]) => `
@@ -99,22 +99,23 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
       ${k === 'store' ? `<div class="gen-modes" style="margin-top:6px"><button type="button" class="mode-chip on" data-fw="woocommerce">🛒 ووکامرس</button><button type="button" class="mode-chip" data-fw="wordpress">📰 وردپرس</button><button type="button" class="mode-chip" data-fw="django">🐍 جنگو</button><button type="button" class="mode-chip" data-fw="node">🟩 نود</button><button type="button" class="mode-chip" data-fw="html">📄 HTML</button></div>` : ''}
     </div>`).join('');
   const rows = builds.map(b => `
-    <div class="mybuild">
-      <div class="mb-info"><b>${b.kind === 'template' ? '🪄' : b.kind === 'plugin' ? '🧩' : b.kind === 'store' ? '🏪' : '📱'} ${esc(b.title)}</b>
+    <div class="mybuild" data-kind="${b.kind}" data-date="${b.createdAt || ''}">
+      <div class="mb-info"><b>${esc(b.title)}</b>
         <small class="muted">${faDate(b.createdAt)} · قدرت ${Math.round((b.depth || 0.5) * 100)}٪${b.version ? ' · نسخه ' + fa(b.version) : ''}</small></div>
       <div class="mb-act">
-        <a class="btn sm ghost" href="/preview/ai/${b.token}" target="_blank" rel="noopener">👁 پیشنمایش</a>
-        <a class="btn sm soft" href="/ai/download?token=${b.token}">⬇ دانلود ZIP</a>
-        <button type="button" class="btn sm ghost" data-var="${b.token}">🎲 متفاوت</button>
+        <a class="btn sm ghost" href="/preview/ai/${b.token}" target="_blank" rel="noopener">پیشنمایش</a>
+        <a class="btn sm soft" href="/ai/download?token=${b.token}">دانلود ZIP</a>
+        <a class="btn sm ghost" href="/apps/publish" title="انتشار و لینک عمومی">انتشار</a>
+        <button type="button" class="btn sm ghost" data-var="${b.token}">نسخه متفاوت</button>
         <input class="input ltr" style="max-width:190px;padding:7px 10px" placeholder="ویرایش: مثلاً رنگ آبی کن" data-edit="${b.token}">
-        <button type="button" class="btn sm" data-rw="${b.token}">✍️ ویرایش</button>
+        <button type="button" class="btn sm" data-rw="${b.token}">اعمال ویرایش</button>
       </div>
     </div>`).join('') || '<p class="muted small">هنوز چیزی نساختهای — از بالای همین صفحه شروع کن ⬆</p>';
 
   const body = `
 <div class="ai-hero"><div class="ai-hero-in">
   <div><span class="badge primary" style="font-size:.75rem">👑 اشتراک فعال ${plan.icon} ${plan.label}</span>
-    <h2 style="margin:8px 0 6px">استودیوی پرو — هوش مصنوعی در خدمت تو 🪄</h2>
+    <h2 style="margin:8px 0 6px">استودیوی پرو — هوش مصنوعی در خدمت تو</h2>
     <p class="muted">قدرت هوش مصنوعی تو: <b>${fa(power)}٪ از قدرت ادمین</b> (ادمین مافوق حرفهای = ۱۰۰٪) · ${fa(st.daysLeft)} روز مانده · موجودی: ${money(wal)} <a href="/account/wallet" style="color:var(--primary)">شارژ ←</a></p>
   </div>
 </div></div>
@@ -123,16 +124,35 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
   <div class="card panel">
     <div class="sf-head"><div class="flex" style="gap:8px">${tabs}</div></div>
     ${panels}
+    <div class="bt-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;padding:10px 0">
+      <span class="muted small">زمان ساخت:</span>
+      <button type="button" class="mode-chip" data-bt="fast">سریع</button>
+      <button type="button" class="mode-chip on" data-bt="standard">استاندارد</button>
+      <button type="button" class="mode-chip" data-bt="deep">دقیق و کامل</button>
+      <span class="muted small" style="font-size:.72rem">زمان بیشتر = هوش مصنوعی بخشهای بیشتری میسازد و کیفیت بالاتر میرود</span>
+    </div>
     <div id="myEta" class="tier-note"></div>
-    <button class="btn lg" id="proRun" style="width:100%;margin-top:12px">🚀 ساخت با هوش مصنوعی (${fa(power)}٪ قدرت)</button>
+    <button class="btn lg" id="proRun" style="width:100%;margin-top:12px">ساخت با هوش مصنوعی (${fa(power)}٪ قدرت)</button>
     <div id="proOut" style="margin-top:14px"></div>
   </div>
 </div>
 
 <section class="section" style="padding-top:6px">
   <div class="container">
-    <div class="section-head"><h2>📂 ساختههای من (خروجی + پیشنمایش + ویرایش)</h2></div>
-    <div class="card-pad card" style="display:grid;gap:10px">${rows}</div>
+    <div class="section-head"><h2>ساختههای من</h2><span class="sub"><span id="mbTotal">${fa(builds.length)}</span> خروجی</span><a class="muted small" href="/apps/publish">انتشار اپها ←</a></div>
+    <div class="bt-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px">
+      <span class="muted small">نوع:</span>
+      <button type="button" class="mode-chip on" data-mbf="all">همه</button>
+      <button type="button" class="mode-chip" data-mbf="template">قالب</button>
+      <button type="button" class="mode-chip" data-mbf="plugin">افزونه</button>
+      <button type="button" class="mode-chip" data-mbf="store">فروشگاه</button>
+      <button type="button" class="mode-chip" data-mbf="app">اپ</button>
+      <span class="muted small" style="margin-inline-start:8px">زمان ساخت:</span>
+      <button type="button" class="mode-chip on" data-mbt="all">همه</button>
+      <button type="button" class="mode-chip" data-mbt="week">هفته اخیر</button>
+      <button type="button" class="mode-chip" data-mbt="month">ماه اخیر</button>
+    </div>
+    <div class="card-pad card" id="myBuilds" style="display:grid;gap:10px">${rows}</div>
   </div>
 </section>
 
@@ -147,35 +167,70 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
     });
   });
   function kindNow() { var t = document.querySelector('.sf-tab.on'); return t ? t.getAttribute('data-tab') : 'template'; }
+  var btSel = 'standard';
+  document.querySelectorAll('[data-bt]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('[data-bt]').forEach(function (x) { x.classList.remove('on'); });
+      c.classList.add('on'); btSel = c.getAttribute('data-bt');
+    });
+  });
+  // فیلتر درجای ساختهها (نوع + زمان ساخت) — همان رفتار فیلتر در کل سایت
+  var mbKind = 'all', mbTime = 'all';
+  function applyMbFilter() {
+    var rows = document.querySelectorAll('#myBuilds .mybuild');
+    var vis = 0, now = Date.now();
+    rows.forEach(function (r) {
+      var okK = mbKind === 'all' || r.getAttribute('data-kind') === mbKind;
+      var d = new Date(r.getAttribute('data-date') || 0).getTime();
+      var okT = mbTime === 'all' || (mbTime === 'week' && now - d < 7 * 864e5) || (mbTime === 'month' && now - d < 30 * 864e5);
+      r.hidden = !(okK && okT);
+      if (okK && okT) vis++;
+    });
+    var total = document.getElementById('mbTotal');
+    if (total) total.textContent = vis;
+  }
+  document.querySelectorAll('[data-mbf]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('[data-mbf]').forEach(function (x) { x.classList.remove('on'); });
+      c.classList.add('on'); mbKind = c.getAttribute('data-mbf'); applyMbFilter();
+    });
+  });
+  document.querySelectorAll('[data-mbt]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('[data-mbt]').forEach(function (x) { x.classList.remove('on'); });
+      c.classList.add('on'); mbTime = c.getAttribute('data-mbt'); applyMbFilter();
+    });
+  });
   function etaLine(d) { var e = document.getElementById('myEta'); if (e && d && d.eta) e.innerHTML = '⏱ زمان تخمینی ساخت: <b>' + d.eta + '</b>' + (d.strength ? ' · قدرت: <b>' + d.strength + '٪</b>' : ''); }
   function build(seed, token) {
     var kind = token ? document.querySelector('[data-build-kind]')?.getAttribute('data-build-kind') : kindNow();
     var prompt = token ? null : document.getElementById('p-' + kind).value;
     var mode = (kind === 'template' && !token) ? document.getElementById('m-template').value : '';
-    var body = { kind: kind, prompt: prompt, seed: seed || 0 };
+    var body = { kind: kind, prompt: prompt, seed: seed || 0, buildTime: btSel };
     if (mode) body.mode = mode;
     if (kind === 'store') body.fw = fwSel;
-    var btn = document.getElementById('proRun'); btn.disabled = true; btn.textContent = '🧠 در حال فکر کردن و ساخت…';
+    var btn = document.getElementById('proRun'); btn.disabled = true; btn.textContent = 'در حال ساخت… (این ممکن است چند دقیقه طول بکشد)';
     fetch('/ai/build', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: JSON.stringify(body) })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        btn.disabled = false; btn.textContent = '🚀 ساخت با هوش مصنوعی (' + d.strength + '٪ قدرت)';
+        btn.disabled = false; btn.textContent = 'ساخت با هوش مصنوعی (' + d.strength + '٪ قدرت)';
         if (!d.ok) { document.getElementById('proOut').innerHTML = '<div class="alert err">' + (d.error || 'خطا') + '</div>'; return; }
         etaLine(d);
         document.getElementById('proOut').innerHTML =
           '<div class="card card-pad" style="border-color:color-mix(in srgb,var(--primary) 30%,var(--border))">' +
-          '<h3 style="margin-bottom:6px">✅ ساخته شد: ' + d.name + '</h3>' +
+          '<h3 style="margin-bottom:6px">ساخته شد: ' + d.name + '</h3>' +
           '<p class="muted small">نوع: ' + d.kind + ' · حجم: ' + d.sizeKB + 'KB · قدرت: ' + d.strength + '٪ · زمان: ' + d.eta + (d.varied ? ' · 🎲 نسخه متفاوت' : '') + '</p>' +
           '<div class="flex" style="gap:8px;margin-top:8px;flex-wrap:wrap">' +
-          '<a class="btn sm" href="/preview/ai/' + d.token + '" target="_blank" rel="noopener">👁 پیشنمایش زنده</a>' +
-          '<a class="btn sm soft" href="/ai/download?token=' + d.token + '">⬇ دانلود ZIP</a>' +
-          '<button type="button" class="btn sm ghost" data-v2="' + d.token + '">🎲 خروجی متفاوت</button>' +
+          '<a class="btn sm" href="/preview/ai/' + d.token + '" target="_blank" rel="noopener">پیشنمایش زنده</a>' +
+          '<a class="btn sm soft" href="/ai/download?token=' + d.token + '">دانلود ZIP</a>' +
+          '<a class="btn sm ghost" href="/apps/publish">انتشار اپ</a>' +
+          '<button type="button" class="btn sm ghost" data-v2="' + d.token + '">خروجی متفاوت</button>' +
           '<input class="input ltr" style="max-width:220px;padding:7px 10px" placeholder="مثلاً: رنگ اصلی آبی کن" id="rwIn">' +
-          '<button type="button" class="btn sm" data-rw2="' + d.token + '">✍️ اعمال ویرایش</button></div>' +
+          '<button type="button" class="btn sm" data-rw2="' + d.token + '">اعمال ویرایش</button></div>' +
           '<div class="small muted" id="rwNote" style="margin-top:8px"></div></div>';
         bindOutButtons();
       })
-      .catch(function () { btn.disabled = false; btn.textContent = '🚀 ساخت با هوش مصنوعی'; });
+      .catch(function () { btn.disabled = false; btn.textContent = 'ساخت با هوش مصنوعی'; });
   }
   function rework(token, edit) {
     fetch('/ai/rework', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: JSON.stringify({ token: token, edit: edit }) })
@@ -204,6 +259,13 @@ export function userStudioPage(req, res, { user, csrf, baseUrl }) {
       kindPanel(t.getAttribute('data-tab')).classList.add('on');
     });
   });
+  // پرش مستقیم به تب از ناوبری (مثلاً /ai#tab-plugin)
+  (function () {
+    var h = (location.hash || '').match(/^#tab-([a-z]+)/);
+    if (!h) return;
+    var target = document.querySelector('.sf-tab[data-tab="' + h[1] + '"]');
+    if (target) target.click();
+  })();
   document.getElementById('proRun').addEventListener('click', function () { build(0, null); });
   document.querySelectorAll('[data-var]').forEach(function (b) {
     b.addEventListener('click', function () { rework(b.getAttribute('data-var'), ''); });
@@ -227,7 +289,10 @@ export function apiUserBuild(req, res, { body, user }) {
   const db = getDb();
   const plan = planOf(db, st.plan.key) || { ...st.plan, ai: 50 };
   const tierKey = plan.key;
-  const depth = strengthFor('pro', tierKey, plan);
+  // انتخاب زمان ساخت: سریع / استاندارد / دقیق (دقیق‌تر = بخش‌های بیشتر و زمان بیشتر)
+  const BTMAP = { fast: { k: 'fast', d: -0.07 }, standard: { k: 'standard', d: 0 }, deep: { k: 'deep', d: 0.10 } };
+  const bt = BTMAP[String(body.buildTime || 'standard')] || BTMAP.standard;
+  const depth = Math.min(1, Math.max(0.08, strengthFor('pro', tierKey, plan) + bt.d));
   const kind = String(body.kind || 'template');
   if (!['template', 'plugin', 'store', 'app'].includes(kind)) return { json: { ok: false, error: 'نوع نامعتبر' } };
   const seed = Math.abs(parseInt(body.seed, 10) || 0);
@@ -242,7 +307,7 @@ export function apiUserBuild(req, res, { body, user }) {
       if (body.mode && MODE_LABELS[body.mode]) spec.mode = body.mode;
       if (seed) spec = varySpec(spec, seed);
       const gen = generateFromSpec(spec, { styleInline: true, depth });
-      insert('aiProducts', { token, kind, title: `قالب ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, depth, seed, tier: tierKey, data: { spec, prompt, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style } }, createdAt: new Date().toISOString() });
+      insert('aiProducts', { token, kind, title: `قالب ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, buildTime: bt.k, depth, seed, tier: tierKey, data: { spec, prompt, html: gen.home, full: { home: gen.home, about: gen.about, contact: gen.contact, style: gen.style } }, createdAt: new Date().toISOString() });
       return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(gen.home.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed, power: plan.ai } };
     }
     if (kind === 'plugin') {
@@ -251,7 +316,7 @@ export function apiUserBuild(req, res, { body, user }) {
       const g = generatePlugin(spec, depth);
       zipBuf = makeZip(g.files);
       saveAiBuildFile(token, zipBuf);
-      insert('aiProducts', { token, kind, title: `افزونه ${spec.name}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
+      insert('aiProducts', { token, kind, title: `افزونه ${spec.name}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, buildTime: bt.k, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
       return { json: { ok: true, kind, token, name: spec.name, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed, power: plan.ai } };
     }
     if (kind === 'store') {
@@ -261,7 +326,7 @@ export function apiUserBuild(req, res, { body, user }) {
       const g = generateStore(spec, depth);
       zipBuf = makeZip(g.files);
       saveAiBuildFile(token, zipBuf);
-      insert('aiProducts', { token, kind, title: `فروشگاهساز ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
+      insert('aiProducts', { token, kind, title: `فروشگاهساز ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, buildTime: bt.k, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
       return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed, power: plan.ai } };
     }
     spec = parsePrompt(prompt);
@@ -269,7 +334,7 @@ export function apiUserBuild(req, res, { body, user }) {
     const g = generateApp(spec, tierKey, depth);
     zipBuf = makeZip(g.files);
     saveAiBuildFile(token, zipBuf);
-    insert('aiProducts', { token, kind, title: `اپ اندروید ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
+    insert('aiProducts', { token, kind, title: `اپ اندروید ${spec.brand}`, price, discount: 0, published: false, role: 'pro', userId: user.id, plan: tierKey, buildTime: bt.k, depth, seed, tier: tierKey, data: { spec, prompt }, createdAt: new Date().toISOString() });
     return { json: { ok: true, kind, token, name: spec.brand, sizeKB: Math.round(zipBuf.length / 1024), previewable: true, eta: eta.label, strength: Math.round(depth * 100), varied: !!seed, power: plan.ai } };
   } catch (e) {
     return { json: { ok: false, error: 'خطا در ساخت: ' + e.message } };
